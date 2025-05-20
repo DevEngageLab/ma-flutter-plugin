@@ -1,3 +1,3 @@
-## 0.0.1
+## 1.0.0+500500
 
-* TODO: Describe initial release.
+* ma first version, android sdk 5.0.0, ios sdk 5.0.0
