@@ -1,0 +1,79 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+android {
+    namespace "cn.jiguang.hxhg.flutter_plugin_engagelab_ma_example"
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId "com.ma.test001"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+
+        manifestPlaceholders = [
+                //appKey，需要与控制台上的一样，与packageName是一对一关系
+                ENGAGELAB_PRIVATES_APPKEY : "a1b69af966bbf7d5fe6bc774",
+                // Engagelab appChannel，用于渠道统计
+                ENGAGELAB_PRIVATES_CHANNEL: "developer",
+                // Engagelab process，Engagelabsdk工作所在的进程，注意:开头
+                ENGAGELAB_PRIVATES_PROCESS: ":remote",
+                XIAOMI_APPID            : "",
+                XIAOMI_APPKEY           : "",
+                MEIZU_APPID            : "",
+                MEIZU_APPKEY           : "",
+                OPPO_APPID             : "",
+                OPPO_APPKEY            : "",
+                OPPO_APPSECRET         : "",
+                VIVO_APPID             : "105481245",
+                VIVO_APPKEY            : "8ce86005c2bc8a4db5178210b51eeb8a",
+                HONOR_APPID            : "",
+                APP_TCP_SSL            : "",
+                APP_DEBUG            : "",
+                COUNTRY_CODE            : ""
+        ]
+    }
+
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}

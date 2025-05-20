@@ -1,0 +1,47 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_plugin_engagelab (0.0.3):
+    - Flutter
+    - MTPush (= 5.0.0)
+  - flutter_plugin_engagelab_ma (0.0.1):
+    - Flutter
+    - MTMA (= 5.0.0)
+    - MTPush (= 5.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - MTMA (5.0.0):
+    - MTPush (>= 5.0.0)
+  - MTPush (5.0.0)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_plugin_engagelab (from `.symlinks/plugins/flutter_plugin_engagelab/ios`)
+  - flutter_plugin_engagelab_ma (from `.symlinks/plugins/flutter_plugin_engagelab_ma/ios`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+
+SPEC REPOS:
+  trunk:
+    - MTMA
+    - MTPush
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_plugin_engagelab:
+    :path: ".symlinks/plugins/flutter_plugin_engagelab/ios"
+  flutter_plugin_engagelab_ma:
+    :path: ".symlinks/plugins/flutter_plugin_engagelab_ma/ios"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+
+SPEC CHECKSUMS:
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  flutter_plugin_engagelab: a624a908faff370efd2b566574fcd40809e5640a
+  flutter_plugin_engagelab_ma: d7ba236714ca813080ef44439ccb21afc35c6e3e
+  integration_test: 2d03ab552da9a1f408709a6acf3d7ca4cb3cb307
+  MTMA: 9c5a3b02a635e837650765ea6e4494dc988960a4
+  MTPush: 0b3853e93099c87ea11601424a353ed86e7406c1
+
+PODFILE CHECKSUM: 02caaa843f6501172c0d470d80e72f61175c8b93
+
+COCOAPODS: 1.16.2
