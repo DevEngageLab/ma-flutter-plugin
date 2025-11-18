@@ -17,8 +17,9 @@ A new Flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
 
-  s.dependency 'MTPush','5.0.0'
-  s.dependency 'MTMA','5.0.0'
+  s.dependency 'MTPush','>= 5.0.0'
+  # s.dependency 'MTMA', '5.0.0'
+  s.vendored_frameworks = 'MTMA/MTMA-ios-5.2.2.xcframework'
 
   s.platform = :ios, '8.0'
   s.static_framework = true

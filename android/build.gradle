@@ -41,9 +41,12 @@ android {
         testImplementation 'junit:junit:4.13.2'
         testImplementation 'org.mockito:mockito-core:5.0.0'
         //必须 主包
-        implementation 'com.engagelab:engagelab:5.0.0' // 此处以5.0.0 版本为例。
+        // implementation 'com.engagelab:engagelab:5.0.0' // 此处以5.0.0 版本为例。
         //可选，ma功能
-        implementation 'com.engagelab.plugin:oth_ma:5.0.0' // 此处以5.0.0 版本为例。
+        // implementation 'com.engagelab.plugin:oth_ma:5.0.0' // 此处以5.0.0 版本为例。
+
+        implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+
     }
 
     testOptions {
