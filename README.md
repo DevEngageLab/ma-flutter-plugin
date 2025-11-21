@@ -8,8 +8,8 @@ The flutter_plugin_engagelab_ma plugin cannot be used alone, it requires the [fl
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab: ^1.2.9+500500
-  flutter_plugin_engagelab_ma: ^1.0.0+500500
+  flutter_plugin_engagelab: ^1.3.4+523523
+  flutter_plugin_engagelab_ma: ^1.0.1+523523
 ```
 
 Navigate to the ios directory:

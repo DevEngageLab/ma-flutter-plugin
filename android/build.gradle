@@ -45,7 +45,9 @@ android {
         //可选，ma功能
         // implementation 'com.engagelab.plugin:oth_ma:5.0.0' // 此处以5.0.0 版本为例。
 
-        implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+        // implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+
+        implementation 'com.engagelab.plugin:oth_ma:5.2.3'
 
     }
 
