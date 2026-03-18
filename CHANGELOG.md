@@ -1,3 +1,7 @@
+## 1.0.2+530532
+
+* update android sdk 5.3.0, ios sdk 5.3.2
+
 ## 1.0.1+523523
 
 * ma first version, android sdk 5.2.3, ios sdk 5.2.3

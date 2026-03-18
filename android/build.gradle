@@ -47,7 +47,7 @@ android {
 
         // implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
 
-        implementation 'com.engagelab.plugin:oth_ma:5.2.3'
+        implementation 'com.engagelab.plugin:oth_ma:5.3.0'
 
     }
 
