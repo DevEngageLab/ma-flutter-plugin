@@ -15,8 +15,14 @@
         NSDictionary *args = call.arguments;
         MTMAConfig *config = [[MTMAConfig alloc] init];
         MTMAUserID *user = [[MTMAUserID alloc] init];
-        user.userID = args[@"userId"];
-        user.anonymousID =  args[@"anonymousId"];
+        NSString *anonymousId = args[@"anonymousId"];
+        NSString *userId = args[@"userId"];
+        if (![anonymousId isKindOfClass:[NSNull class]] && anonymousId != nil && anonymousId.length > 0) {
+            user.anonymousID = anonymousId;
+        }
+        if (![userId isKindOfClass:[NSNull class]] &&userId != nil && userId.length > 0) {
+            user.userID = userId;
+        }
         config.completion = ^(NSInteger code, NSString * _Nonnull message) {
             result(@{
                 @"code": @(code),
@@ -35,8 +41,14 @@
     } else if ([@"setUserIdentity" isEqualToString:call.method]) {
         NSDictionary *args = call.arguments;
         MTMAUserID *userid = [[MTMAUserID alloc] init];
-        userid.anonymousID = args[@"anonymousId"];
-        userid.userID = args[@"userId"];
+        NSString *anonymousId = args[@"anonymousId"];
+        NSString *userId = args[@"userId"];
+        if (![anonymousId isKindOfClass:[NSNull class]] && anonymousId != nil && anonymousId.length > 0) {
+            userid.anonymousID = anonymousId;
+        }
+        if (![userId isKindOfClass:[NSNull class]] &&userId != nil && userId.length > 0) {
+            userid.userID = userId;
+        }
         userid.completion = ^(NSInteger code, NSString * _Nonnull message) {
             result(@{@"code": @(code), @"message": message});
         };

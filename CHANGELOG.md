@@ -1,3 +1,7 @@
+## 1.0.3+530532
+
+* fix ios setUserIdentity api issuue
+
 ## 1.0.2+530532
 
 * update android sdk 5.3.0, ios sdk 5.3.2
