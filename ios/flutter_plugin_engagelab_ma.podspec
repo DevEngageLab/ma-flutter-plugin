@@ -17,11 +17,9 @@ A new Flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
 
-  # s.dependency 'MTPush','>= 5.0.0'
-  s.dependency 'MTMA', '5.3.2'
-  # s.vendored_frameworks = 'MTMA/MTMA-ios-5.2.2.xcframework'
+  s.dependency 'MTMA', '5.5.0'
 
-  s.platform = :ios, '8.0'
+  s.platform = :ios, '10.0'
   s.static_framework = true
 
   # Flutter.framework does not contain a i386 slice.

@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/services.dart';
-import 'package:flutter_plugin_engagelab/flutter_plugin_engagelab.dart';
 import 'package:flutter_plugin_engagelab_ma/flutter_plugin_engagelab_ma.dart';
 
 void main() {
@@ -18,67 +14,65 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const String _maAppKeyOverride = String.fromEnvironment(
+    'MA_APP_KEY',
+  );
+  static const int _channelIdOverride = int.fromEnvironment('MA_CHANNEL_ID');
+  String get _maAppKey {
+    if (_maAppKeyOverride.isNotEmpty) {
+      return _maAppKeyOverride;
+    }
+    return '';
+  }
+
+  int get _channelId {
+    if (_channelIdOverride > 0) {
+      return _channelIdOverride;
+    }
+    return 0;
+  }
+
   String _euid = 'Unknown';
+  String _maRid = 'Unknown';
   bool _isInitialized = false;
   String _statusMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _initializeEngageLabPush();
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> _initializeEngageLabPush() async {
-    FlutterPluginEngagelab.addEventHandler(
-        onMTCommonReceiver: (Map<String, dynamic> message) async {
-      FlutterPluginEngagelab.printMy("flutter onMTCommonReceiver: $message");
-      String event_name = message["event_name"];
-      String event_data = message["event_data"];
-      FlutterPluginEngagelab.printMy(
-          "flutter onMTCommonReceiver event_name: " + event_name);
-      FlutterPluginEngagelab.printMy(
-          "flutter onMTCommonReceiver event_data: " + event_data);
-
-      if (Comparable.compare(event_name, "onConnectStatus") == 0 ||
-          Comparable.compare(event_name, "networkDidLogin") == 0) {
-        // 初始化MA
-        _initializeEngageLabMA();
-      }
-    });
-
-    FlutterPluginEngagelab.configDebugMode(true);
-    if (Platform.isIOS) {
-      FlutterPluginEngagelab.initIos(
-        appKey: "a1b69af966bbf7d5fe6bc774", // 5645a6e0c6ef00bb71facf21
-        channel: "testChannel",
-      );
-      FlutterPluginEngagelab.checkNotificationAuthorizationIos();
-    } else if (Platform.isAndroid) {
-      FlutterPluginEngagelab.initAndroid();
-    }
-
-    FlutterPluginEngagelab.getRegistrationId().then((rid) {
-      FlutterPluginEngagelab.printMy("flutter get registration id : $rid");
-    });
+    _initializeEngageLabMA();
   }
 
   Future<void> _initializeEngageLabMA() async {
+    if (_maAppKey.isEmpty) {
+      _statusMessage =
+          '请通过 --dart-define=MA_APP_KEY=... 配置当前 SDK 环境对应的 MA AppKey';
+      return;
+    }
     try {
       // 设置采集权限
       FlutterPluginEngagelabMa.setCollectControl(
-          idfa: false, idfv: false, carrier: true);
+        idfa: false,
+        idfv: false,
+        carrier: true,
+      );
 
       // Start the service
       final result = await FlutterPluginEngagelabMa.start(
-          userId: "test_user_123", anonymousId: "anon_456");
+        appKey: _maAppKey,
+        userId: "test_user_123",
+        anonymousId: "anon_456",
+      );
       final msg =
-          "MA启动结果: code=${result['code']}, message=${result['message']}";
-      FlutterPluginEngagelab.printMy(msg);
-      final ret = result['code'] == 0 ? true : false;
+          "MA启动结果: code=${result['code']}, message=${result['message']}, "
+          "euid=${result['euid']}, maRid=${result['maRid']}";
+      debugPrint(msg);
+      final ret = result['success'] == true;
 
       setState(() {
         _isInitialized = ret;
+        _euid = result['euid'] ?? '';
+        _maRid = result['maRid'] ?? '';
         _statusMessage = msg;
       });
     } on PlatformException catch (e) {
@@ -92,10 +86,12 @@ class _MyAppState extends State<MyApp> {
   Future<void> _setUserIdentity() async {
     try {
       final result = await FlutterPluginEngagelabMa.setUserIdentity(
-          userId: "test_user_123", anonymousId: "anon_456");
+        userId: "test_user_123",
+        anonymousId: "anon_456",
+      );
       final ret =
           'setUserIdentity结果: code=${result['code']}, message=${result['message']}';
-      FlutterPluginEngagelab.printMy(ret);
+      debugPrint(ret);
 
       setState(() {
         _statusMessage = ret;
@@ -110,11 +106,13 @@ class _MyAppState extends State<MyApp> {
   // 设置用户联系方式
   Future<void> _setUserContact() async {
     try {
-      final result = await FlutterPluginEngagelabMa.setUserContact(
-          {"email": "test@example.com", "mobile_phone": "1234567890"});
+      final result = await FlutterPluginEngagelabMa.setUserContact({
+        "email": "test@example.com",
+        "mobile_phone": "1234567890",
+      });
       final ret =
           'setUserContact结果: code=${result['code']}, message=${result['message']}';
-      FlutterPluginEngagelab.printMy(ret);
+      debugPrint(ret);
       setState(() {
         _statusMessage = ret;
       });
@@ -136,6 +134,39 @@ class _MyAppState extends State<MyApp> {
     } on PlatformException catch (e) {
       setState(() {
         _statusMessage = '获取 EUID 失败: ${e.message}';
+      });
+    }
+  }
+
+  // 获取 MA RID
+  Future<void> _getMaRid() async {
+    try {
+      final maRid = await FlutterPluginEngagelabMa.getMaRid();
+      setState(() {
+        _maRid = maRid;
+        _statusMessage = '获取 MA RID 成功';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '获取 MA RID 失败: ${e.message}';
+      });
+    }
+  }
+
+  // 设置第三方 Push 渠道。EngageLab AppPush 集成后由 MA 自动绑定。
+  Future<void> _setChannelValue() async {
+    try {
+      final result = await FlutterPluginEngagelabMa.setChannelValue(
+        channelId: _channelId,
+        values: const <String>['flutter-demo-token'],
+      );
+      setState(() {
+        _statusMessage = '设置第三方 Push 渠道结果: channelId=$_channelId, '
+            'code=${result['code']}, message=${result['message']}';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '设置第三方 Push 渠道失败: ${e.message}';
       });
     }
   }
@@ -186,7 +217,10 @@ class _MyAppState extends State<MyApp> {
   Future<void> _setUtmProperties() async {
     try {
       await FlutterPluginEngagelabMa.setUtmProperties(
-          utmSource: "google", utmMedium: "cpc", utmCampaign: "spring_sale");
+        utmSource: "google",
+        utmMedium: "cpc",
+        utmCampaign: "spring_sale",
+      );
       setState(() {
         _statusMessage = '设置 UTM 属性成功';
       });
@@ -200,8 +234,16 @@ class _MyAppState extends State<MyApp> {
   // 覆盖更新用户属性
   Future<void> _setUserProperties() async {
     try {
-      final result = await FlutterPluginEngagelabMa.setUserProperties(
-          {'name': 'John Doe'});
+      final result = await FlutterPluginEngagelabMa.setUserProperties({
+        'name': 'John Doe',
+        'devices': <Map<String, Object?>>[
+          <String, Object?>{
+            'device_id': 'device_1',
+            'enabled': true,
+            'year': 2026,
+          },
+        ],
+      });
       setState(() {
         _statusMessage =
             '覆盖更新用户属性结果: code=${result['code']}, message=${result['message']}';
@@ -213,11 +255,13 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-// 累加更新用户属性
+  // 累加更新用户属性
   Future<void> _incrementUserProperties() async {
     try {
-      final result = await FlutterPluginEngagelabMa.incrementUserProperties(
-          {'loginCount': 1, 'points': 100});
+      final result = await FlutterPluginEngagelabMa.incrementUserProperties({
+        'loginCount': 1,
+        'points': 100,
+      });
       setState(() {
         _statusMessage =
             '累加更新用户属性结果: code=${result['code']}, message=${result['message']}';
@@ -229,11 +273,13 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-// 追加用户属性
+  // 追加用户属性
   Future<void> _appendUserProperties() async {
     try {
       final result = await FlutterPluginEngagelabMa.appendUserProperties(
-          property: "interests", values: ['sports', 'music']);
+        property: "interests",
+        values: ['sports', 'music'],
+      );
       setState(() {
         _statusMessage =
             '追加用户属性结果: code=${result['code']}, message=${result['message']}';
@@ -245,11 +291,13 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-// 移除用户属性
+  // 移除用户属性
   Future<void> _removeUserProperties() async {
     try {
       final result = await FlutterPluginEngagelabMa.removeUserProperties(
-          property: "interests", values: ['sports']);
+        property: "interests",
+        values: ['sports'],
+      );
       setState(() {
         _statusMessage =
             '移除用户属性结果: code=${result['code']}, message=${result['message']}';
@@ -261,11 +309,66 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-// 删除用户属性
+  Future<void> _updateObjectArrayProperty() async {
+    try {
+      final result = await FlutterPluginEngagelabMa.updateObjectArrayProperty(
+        property: 'devices',
+        identifierKey: 'device_id',
+        identifierValue: 'device_1',
+        values: <String, Object?>{'enabled': false, 'legacy_name': null},
+      );
+      setState(() {
+        _statusMessage =
+            '更新 object_array 元素结果: code=${result['code']}, message=${result['message']}';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '更新 object_array 元素失败: ${e.message}';
+      });
+    }
+  }
+
+  Future<void> _appendObjectArrayProperty() async {
+    try {
+      final result = await FlutterPluginEngagelabMa.appendObjectArrayProperty(
+        property: 'devices',
+        object: <String, Object?>{'device_id': 'device_2', 'year': 2026},
+      );
+      setState(() {
+        _statusMessage =
+            '追加 object_array 元素结果: code=${result['code']}, message=${result['message']}';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '追加 object_array 元素失败: ${e.message}';
+      });
+    }
+  }
+
+  Future<void> _removeObjectArrayProperty() async {
+    try {
+      final result = await FlutterPluginEngagelabMa.removeObjectArrayProperty(
+        property: 'devices',
+        identifierKey: 'device_id',
+        identifierValue: 'device_2',
+      );
+      setState(() {
+        _statusMessage =
+            '删除 object_array 元素结果: code=${result['code']}, message=${result['message']}';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '删除 object_array 元素失败: ${e.message}';
+      });
+    }
+  }
+
+  // 删除用户属性
   Future<void> _deleteUserProperties() async {
     try {
-      final result =
-          await FlutterPluginEngagelabMa.deleteUserProperty("interests");
+      final result = await FlutterPluginEngagelabMa.deleteUserProperty(
+        "interests",
+      );
       setState(() {
         _statusMessage =
             '删除用户属性结果: code=${result['code']}, message=${result['message']}';
@@ -280,9 +383,11 @@ class _MyAppState extends State<MyApp> {
   Future<void> _eventRecord() async {
     try {
       final result = await FlutterPluginEngagelabMa.eventRecord(
-          eventName: "customevent", property: {"key1": "value1"});
+        eventName: "customevent",
+        property: {"key1": "value1"},
+      );
       setState(() {
-        _statusMessage = '自定义事件成功: code=${result}';
+        _statusMessage = '自定义事件成功: code=$result';
       });
     } on PlatformException catch (e) {
       setState(() {
@@ -295,9 +400,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('EngageLab MA 示例'),
-        ),
+        appBar: AppBar(title: const Text('EngageLab MA 示例')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -323,6 +426,12 @@ class _MyAppState extends State<MyApp> {
                       ),
                       const SizedBox(height: 8),
                       Text('EUID: $_euid'),
+                      const SizedBox(height: 8),
+                      Text('MA RID: $_maRid'),
+                      const SizedBox(height: 8),
+                      const Text('如业务方另行集成并初始化 AppPush，MA 会在双方身份就绪后自动关联'),
+                      const SizedBox(height: 8),
+                      Text('第三方 Push Channel ID: $_channelId'),
                       const SizedBox(height: 8),
                       Text(
                         _statusMessage,
@@ -351,6 +460,17 @@ class _MyAppState extends State<MyApp> {
               ElevatedButton(
                 onPressed: _isInitialized ? _getEuid : null,
                 child: const Text('获取 EUID'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _isInitialized ? _getMaRid : null,
+                child: const Text('获取 MA RID'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed:
+                    _isInitialized && _channelId > 0 ? _setChannelValue : null,
+                child: const Text('设置第三方 Push 渠道'),
               ),
               const SizedBox(height: 8),
               ElevatedButton(
@@ -392,6 +512,21 @@ class _MyAppState extends State<MyApp> {
               ElevatedButton(
                 onPressed: _isInitialized ? _removeUserProperties : null,
                 child: const Text('移除用户属性'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _isInitialized ? _updateObjectArrayProperty : null,
+                child: const Text('更新 object_array 元素'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _isInitialized ? _appendObjectArrayProperty : null,
+                child: const Text('追加 object_array 元素'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _isInitialized ? _removeObjectArrayProperty : null,
+                child: const Text('删除 object_array 元素'),
               ),
               const SizedBox(height: 8),
               ElevatedButton(

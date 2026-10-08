@@ -1,6 +1,6 @@
 #import <Flutter/Flutter.h>
-#import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
+#import <math.h>
 
 @import flutter_plugin_engagelab_ma;
 
@@ -14,17 +14,120 @@
 
 @implementation RunnerTests
 
-- (void)testExample {
+- (void)testStartWithoutAppKeyReturnsValidationError {
   FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
-
-  FlutterMethodCall *call = [FlutterMethodCall methodCallWithMethodName:@"getPlatformVersion"
-                                                              arguments:nil];
+  FlutterMethodCall *call = [FlutterMethodCall methodCallWithMethodName:@"start"
+                                                              arguments:@{}];
   XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
   [plugin handleMethodCall:call
                     result:^(id result) {
-                      NSString *expected = [NSString
-                          stringWithFormat:@"iOS %@", UIDevice.currentDevice.systemVersion];
-                      XCTAssertEqualObjects(result, expected);
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      XCTAssertEqualObjects(response[@"success"], @NO);
+                      [expectation fulfill];
+                    }];
+  [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testUpdateObjectArrayIdentifierMutationReturnsValidationError {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  FlutterMethodCall *call = [FlutterMethodCall
+      methodCallWithMethodName:@"updateObjectArrayProperty"
+                     arguments:@{
+                       @"property" : @"devices",
+                       @"identifierKey" : @"device_id",
+                       @"identifierValue" : @"device-1",
+                       @"values" : @{ @"device_id" : @"device-2" }
+                     }];
+  XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
+  [plugin handleMethodCall:call
+                    result:^(id result) {
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      XCTAssertEqualObjects(response[@"message"],
+                                            @"object_array update parameters are invalid");
+                      [expectation fulfill];
+                    }];
+  [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testObjectArrayBooleanIdentifierReturnsValidationError {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  FlutterMethodCall *call = [FlutterMethodCall
+      methodCallWithMethodName:@"removeObjectArrayProperty"
+                     arguments:@{
+                       @"property" : @"devices",
+                       @"identifierKey" : @"enabled",
+                       @"identifierValue" : @YES
+                     }];
+  XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
+  [plugin handleMethodCall:call
+                    result:^(id result) {
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      XCTAssertEqualObjects(response[@"message"],
+                                            @"object_array removal parameters are invalid");
+                      [expectation fulfill];
+                    }];
+  [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testObjectArrayNonFiniteIdentifierReturnsValidationError {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  FlutterMethodCall *call = [FlutterMethodCall
+      methodCallWithMethodName:@"updateObjectArrayProperty"
+                     arguments:@{
+                       @"property" : @"devices",
+                       @"identifierKey" : @"sequence",
+                       @"identifierValue" : @(NAN),
+                       @"values" : @{ @"enabled" : @NO }
+                     }];
+  XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
+  [plugin handleMethodCall:call
+                    result:^(id result) {
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      [expectation fulfill];
+                    }];
+  [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testAppendObjectArrayWithOnlyNullFieldsReturnsValidationError {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  FlutterMethodCall *call = [FlutterMethodCall
+      methodCallWithMethodName:@"appendObjectArrayProperty"
+                     arguments:@{
+                       @"property" : @"devices",
+                       @"object" : @{ @"legacy_name" : NSNull.null }
+                     }];
+  XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
+  [plugin handleMethodCall:call
+                    result:^(id result) {
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      XCTAssertEqualObjects(response[@"message"],
+                                            @"object_array append parameters are invalid");
+                      [expectation fulfill];
+                    }];
+  [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testChannelValuesMustBeNonEmptyStrings {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  FlutterMethodCall *call = [FlutterMethodCall
+      methodCallWithMethodName:@"setChannelValue"
+                     arguments:@{
+                       @"channelId" : @136,
+                       @"values" : @[ @"token", @"  " ]
+                     }];
+  XCTestExpectation *expectation = [self expectationWithDescription:@"result block must be called"];
+  [plugin handleMethodCall:call
+                    result:^(id result) {
+                      NSDictionary *response = (NSDictionary *)result;
+                      XCTAssertEqualObjects(response[@"code"], @(-3));
+                      XCTAssertEqualObjects(
+                          response[@"message"],
+                          @"channelId must be a positive integer and values must contain non-empty strings");
                       [expectation fulfill];
                     }];
   [self waitForExpectationsWithTimeout:1 handler:nil];

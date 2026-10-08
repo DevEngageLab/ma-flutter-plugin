@@ -1,3 +1,42 @@
+## 1.0.4+550550
+
+* preserve native business codes/messages for new APIs; handle object-array bridge exceptions like existing property APIs and channel bridge exceptions like contact APIs
+* support Android and iOS standalone initialization with MA AppKey
+* add getMaRid and setChannelValue on Android and iOS, with consistent channel token whitespace handling
+* add object_array element update, append, and remove APIs; map append to native addObjectArrayProperty
+* bridge the standalone Android MA configDebugMode API (Android only)
+* use published MA 5.5.0 dependencies; the example runs without Push
+* require Android API 23 and declare iOS 10 as the minimum deployment target, matching the native MTMA SDK
+* declare Internet permission for standalone MA and exclude build caches, examples, and tests from the published package
+
+### Upgrading from 1.0.3
+
+`start()` now requires the MA project's `appKey`. Pass it explicitly even when
+AppPush is also integrated. The MA AppKey and Push AppKey are configured
+independently.
+
+Before:
+
+```dart
+await FlutterPluginEngagelabMa.start(userId: 'user_id');
+```
+
+After:
+
+```dart
+await FlutterPluginEngagelabMa.start(
+  appKey: 'your_ma_app_key',
+  userId: 'user_id',
+);
+```
+
+Set the Android application's minimum SDK to API 23 or later. The iOS plugin
+now declares a minimum deployment target of iOS 10, matching the native MTMA
+requirement; the host application must also meet its Flutter version's minimum.
+
+MA can initialize independently. Keep the Push plugin only when Push capabilities
+are needed, and initialize MA and Push separately.
+
 ## 1.0.3+530532
 
 * fix ios setUserIdentity api issuue

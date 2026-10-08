@@ -1,1 +1,22 @@
+# Local build outputs and caches.
+build/
+.dart_tool/
+.packages
+/pubspec.lock
+**/doc/api/
+*.class
+*.log
+*.pyc
+*.swp
+*.iml
+*.ipr
+*.iws
+.DS_Store
+migrate_working_dir/
+
+# Examples and test sources.
 example/
+/test/
+/integration_test/
+/android/src/test/
+/android/src/androidTest/

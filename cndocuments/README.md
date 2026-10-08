@@ -5,12 +5,13 @@
 
 在 `pubspec.yaml` 文件中添加依赖：
 
-flutter_plugin_engagelab_ma 插件无法单独使用，需要同时集成[flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab)插件。
+Android 和 iOS MA 5.5.0 均支持独立初始化；只有需要 Push 能力时才需要同时集成 [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) 插件。
+
+插件通过 Maven Central 引入 Android MA 5.5.0，通过 CocoaPods 引入 iOS MTMA 5.5.0，无需本地 SDK 制品。
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab: ^1.2.9+500500
-  flutter_plugin_engagelab_ma: ^1.0.0+500500
+  flutter_plugin_engagelab_ma: ^1.0.4+550550
 ```
 
 cd 到 ios 目录下：
@@ -20,7 +21,21 @@ cd 到 ios 目录下：
 
 ##### Android:
 
-在 `/android/app/build.gradle` 中添加下列代码：
+接口使用方式见 [Flutter API 文档](./APIs.md)。
+
+最低支持 Android API 23。MA 依赖 `com.engagelab.plugin:oth_ma:5.5.0`
+从 Maven Central 获取，无需本地构建 SDK。插件已声明联网权限，支持独立 MA 的 release 构建。
+
+AppPush 自动绑定需要原生 Push SDK 5.5.0 或以上版本。如果 Flutter Push 插件仍依赖旧版本，
+在应用的 Gradle 文件中添加：
+
+```groovy
+dependencies {
+  implementation 'com.engagelab:engagelab:5.5.0'
+}
+```
+
+同时集成 Push 时，在 `/android/app/build.gradle` 中添加下列配置：
 
 ```groovy
 android: {
@@ -53,15 +68,17 @@ android: {
 ### 使用
 
 ```dart
-import 'package:flutter_plugin_engagelab/flutter_plugin_engagelab.dart';
 import 'package:flutter_plugin_engagelab_ma/flutter_plugin_engagelab_ma.dart';
 ```
 
 ### APIs
 
-**注意** : 
-flutter_plugin_engagelab_ma 插件无法单独使用，需要同时集成flutter_plugin_engagelab插件。
-调用 FlutterPluginEngagelabMa.start 方法初始化MA插件之前，请先初始化flutter_plugin_engagelab插件。
+Android 和 iOS 端均直接使用 MA AppKey 初始化，Push 初始化为可选项：
 
- [参考](./documents/APIs.md)
+```dart
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: '您的 MA AppKey',
+);
+```
 
+[API 文档](./APIs.md) · [示例与集成测试](../example/README.md)

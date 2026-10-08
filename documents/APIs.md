@@ -9,12 +9,15 @@
     - [Override Update User Properties](#override-update-user-properties)
     - [Increment User Properties](#increment-user-properties)
     - [Append User Properties](#append-user-properties)
+    - [Manage object_array Elements](#manage-object_array-elements)
     - [Remove User Properties](#remove-user-properties)
     - [Delete User Properties](#delete-user-properties)
   - [Other Features](#other-features)
     - [Set User Identity](#set-user-identity)
     - [Set User Contact Information](#set-user-contact-information)
     - [Get EUID](#get-euid)
+    - [Get MA RID](#get-ma-rid)
+    - [Set Third-Party Push Channel](#set-third-party-push-channel)
     - [Set Report Interval](#set-report-interval)
     - [Set Event Cache Limit](#set-event-cache-limit)
     - [Set Session Timeout](#set-session-timeout)
@@ -25,12 +28,13 @@
 
 Add the dependency in your `pubspec.yaml` file:
 
-The flutter_plugin_engagelab_ma plugin cannot be used alone and requires integration with the [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) plugin.
+Android and iOS MA 5.5.0 support standalone initialization. Add [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) only when Push capabilities are required.
+
+The plugin resolves official MA 5.5.0 dependencies from Maven Central and CocoaPods. Use the AppKey for your production-environment project.
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab: ^1.2.9+500500
-  flutter_plugin_engagelab_ma: ^1.0.0+500500
+  flutter_plugin_engagelab_ma: ^1.0.4+550550
 ```
 
 Navigate to the ios directory:
@@ -38,33 +42,20 @@ Run pod install
 
 ## Initialization
 
-Initialize the MA SDK: This needs to be done after the successful initialization of the flutter_plugin_engagelab plugin.
+Pass the MA AppKey to `start`. Android and iOS MA 5.5.0 do not need to wait for Push initialization.
 
-For flutter_plugin_engagelab initialization, please refer to the demo example in [flutter_plugin_engagelab](https://github.com/DevEngageLab/push-flutter-plugin/blob/main/example/lib/main.dart).
+`appKey` is the MA project AppKey, independent from the Push AppKey, and must be 24 letters or digits. `userId`, `anonymousId`, `email`, and `phone` are all optional; their length and format rules match the native SDK. See the [Android API guide](../sdkdoc/android/API%20指南.md) and [iOS API guide](../sdkdoc/ios/API%20指南.md).
 
 ```dart
-// Initialize flutter_plugin_engagelab plugin
-FlutterPluginEngagelab.addEventHandler(
-        onMTCommonReceiver: (Map<String, dynamic> message) async {
-      String event_name = message["event_name"];
-      if (Comparable.compare(event_name, "onConnectStatus") == 0 ||
-          Comparable.compare(event_name, "networkDidLogin") == 0) {
-        // Initialize flutter_plugin_engagelab_ma plugin
-        final result = await FlutterPluginEngagelabMa.start(
-            userId: "your_user_id",     
-            anonymousId: "anon_id"     
-        );
-      }
-    });
-if (Platform.isIOS) {
-      FlutterPluginEngagelab.initIos(
-        appKey: "your_appkey", 
-        channel: "testChannel",
-      );
-      FlutterPluginEngagelab.checkNotificationAuthorizationIos();
-} else if (Platform.isAndroid) {
-      FlutterPluginEngagelab.initAndroid();
-}
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: "your_ma_app_key",
+  userId: "your_user_id",
+  anonymousId: "anon_id",
+  email: "user@example.com",
+  phone: "+8613800138000",
+);
+
+// result contains code, message, euid, maRid, and success
 ```
 
 ## User Property Management
@@ -73,12 +64,15 @@ if (Platform.isIOS) {
 
 Override update user properties. If the property already exists, it will be overwritten.
 
-- Parameters are passed as a dictionary. The key must be of String type. The value supports String/Number/List types, and the internal values of List type must be String type.
+- Parameters are passed as a map whose keys are strings. Values support strings, finite numbers, booleans, string arrays, maps (`object`), and arrays of maps (`object_array`). Nested `object`/`object_array` values are not supported.
 - If a user property already exists, it will be overwritten; if it doesn't exist, it will be created. For example: user membership level.
 
 ```dart
 final result = await FlutterPluginEngagelabMa.setUserProperties({
-    'name': 'John Doe'
+  'name': 'John Doe',
+  'devices': <Map<String, Object?>>[
+    {'device_id': 'device_1', 'enabled': true},
+  ],
 });
 
 // Return result
@@ -124,6 +118,46 @@ final result = await FlutterPluginEngagelabMa.appendUserProperties(
 }
 ```
 
+### Manage object_array Elements
+
+Android and iOS MA 5.5.0 and later support updating, appending, and removing individual `object_array` elements. Use `setUserProperties` with a non-empty array first when the property has not yet been created. The existing `appendUserProperties` and `removeUserProperties` APIs remain string-array-only APIs.
+
+Update the fields of the uniquely matching object. `identifierValue` must be a string or finite number. A `null` value removes that field, and `values` cannot modify the identifier field.
+
+```dart
+final result = await FlutterPluginEngagelabMa.updateObjectArrayProperty(
+  property: 'devices',
+  identifierKey: 'device_id',
+  identifierValue: 'device_1',
+  values: <String, Object?>{
+    'enabled': false,
+    'legacy_name': null,
+  },
+);
+```
+
+Append one non-empty object without replacing existing elements:
+
+```dart
+final result = await FlutterPluginEngagelabMa.appendObjectArrayProperty(
+  property: 'devices',
+  object: <String, Object?>{
+    'device_id': 'device_2',
+    'year': 2026,
+  },
+);
+```
+
+Remove the complete object identified by a unique field:
+
+```dart
+final result = await FlutterPluginEngagelabMa.removeObjectArrayProperty(
+  property: 'devices',
+  identifierKey: 'device_id',
+  identifierValue: 'device_2',
+);
+```
+
 ### Remove User Properties
 
 - Remove specified values from array type properties.
@@ -165,7 +199,9 @@ Set user identity information.
 ```dart
 final result = await FlutterPluginEngagelabMa.setUserIdentity(
     userId: "your_user_id",     // optional
-    anonymousId: "anon_id"      // optional
+    anonymousId: "anon_id",     // optional
+    email: "user@example.com",  // optional
+    phone: "+8613800138000",    // optional
 );
 ```
 
@@ -186,8 +222,33 @@ final result = await FlutterPluginEngagelabMa.setUserContact({
 
 Get user's EUID.
 
+Returns an empty string before initialization succeeds or before the identity is available.
+
 ```dart
 final euid = await FlutterPluginEngagelabMa.getEuid();
+```
+
+### Get MA RID
+
+Supported on Android and iOS 5.5.0 and later.
+
+Returns an empty string before initialization succeeds or before the identity is available. MA RID and Push RID are different device identifiers and must not be used interchangeably.
+
+```dart
+final maRid = await FlutterPluginEngagelabMa.getMaRid();
+```
+
+### Set Third-Party Push Channel
+
+Supported on Android and iOS 5.5.0 and later. Use this API to set a third-party Push RID or token. When EngageLab AppPush and MA are both integrated, MA automatically associates the AppPush AppKey/RID with the current MA identity after AppPush registration succeeds; do not call this API for AppPush. Other third-party Push providers still require an explicit call.
+
+`channelId` must be greater than 0. Flutter trims leading and trailing whitespace from every RID/token on both platforms without modifying the input list. `values` and every trimmed string must be non-empty. Call the API again whenever the RID or token changes.
+
+```dart
+final result = await FlutterPluginEngagelabMa.setChannelValue(
+  channelId: 1,
+  values: ['third_party_push_token'],
+);
 ```
 
 ### Set Report Interval
@@ -278,3 +339,33 @@ final result = await FlutterPluginEngagelabMa.eventRecord(
 }
 ```
 
+## Results and Exceptions
+
+Native business results keep their original `code` and `message`. A nonzero
+code does not throw automatically; messages are not necessarily JSON and error
+meanings can differ by platform. Check the business code instead of message text.
+
+The new object-array update, append and remove methods follow existing property
+APIs: a `PlatformException` becomes `{'code': -1, 'message': 'error description'}`.
+`setChannelValue` follows the contact API: bridge exceptions keep their code and
+are rethrown with an explanatory message. Dart argument validation throws
+`ArgumentError`.
+
+Initialization keeps the original exception behavior: native failures return a
+Map, while bridge exceptions are rethrown with an explanatory message. Standalone
+initialization requires `appKey` and adds `euid`, `maRid`, and `success` to the
+existing `code`/`message` result. It does not introduce error-code remapping or
+initialization queuing. Await each initialization before starting the next one.
+
+## Android MA Debug Logging
+
+Android MA 5.5.0+ exposes an independent logging switch, disabled by default.
+Call before initialization to include initialization logs:
+
+```dart
+await FlutterPluginEngagelabMa.configDebugMode(true);
+// Disable with configDebugMode(false).
+```
+
+This bridges MTMAApi.configDebugMode directly and does not change Push logging.
+It is Android-only; iOS and other platforms throw UnsupportedError.

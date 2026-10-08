@@ -9,12 +9,15 @@
     - [覆盖更新用户属性](#覆盖更新用户属性)
     - [累加更新用户属性](#累加更新用户属性)
     - [追加用户属性](#追加用户属性)
+    - [操作 object_array 元素](#操作-object_array-元素)
     - [移除用户属性](#移除用户属性)
     - [删除用户属性](#删除用户属性)
   - [其他功能](#其他功能)
     - [设置用户身份](#设置用户身份)
     - [设置用户联系方式](#设置用户联系方式)
     - [获取 EUID](#获取-euid)
+    - [获取 MA RID](#获取-ma-rid)
+    - [设置第三方 Push 通道](#设置第三方-push-通道)
     - [设置上报间隔](#设置上报间隔)
     - [设置事件缓存上限](#设置事件缓存上限)
     - [设置会话超时时间](#设置会话超时时间)
@@ -27,12 +30,13 @@
 
 在 `pubspec.yaml` 文件中添加依赖：
 
-flutter_plugin_engagelab_ma 插件无法单独使用，需要同时集成[flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab)插件。
+Android 和 iOS MA 5.5.0 均支持独立初始化；只有需要 Push 能力时才需要集成 [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) 插件。
+
+插件使用 Maven Central / CocoaPods 的正式 5.5.0 依赖，连接生产环境；请配置对应项目的 AppKey。
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab: ^1.2.9+500500
-  flutter_plugin_engagelab_ma: ^1.0.0+500500
+  flutter_plugin_engagelab_ma: ^1.0.4+550550
 ```
 
 cd 到 ios 目录下：
@@ -40,36 +44,22 @@ cd 到 ios 目录下：
 
 ## 初始化
 
-初始化 MA SDK：需要在 flutter_plugin_engagelab 插件初始化成功之后进行。
+调用 `start` 时传入 MA AppKey。Android 和 iOS 5.5.0 均无需等待 Push 初始化完成。
 
-flutter_plugin_engagelab 的初始化请参考 [flutter_plugin_engagelab](https://github.com/DevEngageLab/push-flutter-plugin/blob/main/example/lib/main.dart) 的demo示例。
+`appKey` 为 MA 项目的 AppKey，与 Push AppKey 相互独立，必须为 24 位字母或数字。`userId`、`anonymousId`、`email`、`phone` 均为可选，字段长度与格式规则与原生一致，详见 [Android API 指南](../sdkdoc/android/API%20指南.md) 和 [iOS API 指南](../sdkdoc/ios/API%20指南.md)。
+
+初始化沿用旧版异常规则：原生初始化失败返回结果 Map，仅桥接 `PlatformException` 补充文案后抛出。独立版增加必传 `appKey` 和结果字段 `euid/maRid/success`；不新增错误码映射或初始化排队层。重复初始化请等待前一次完成。
 
 ```dart
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: "您的 MA AppKey",
+  userId: "your_user_id",
+  anonymousId: "anon_id",
+  email: "user@example.com",
+  phone: "+8613800138000",
+);
 
-// 初始化 flutter_plugin_engagelab 插件
-FlutterPluginEngagelab.addEventHandler(
-        onMTCommonReceiver: (Map<String, dynamic> message) async {
-      String event_name = message["event_name"];
-      if (Comparable.compare(event_name, "onConnectStatus") == 0 ||
-          Comparable.compare(event_name, "networkDidLogin") == 0) {
-        // 初始化flutter_plugin_engagelab_ma 插件
-        final result = await FlutterPluginEngagelabMa.start(
-            userId: "your_user_id",     
-            anonymousId: "anon_id"     
-        );
-      }
-    });
-if (Platform.isIOS) {
-      FlutterPluginEngagelab.initIos(
-        appKey: "您的appkey", 
-        channel: "testChannel",
-      );
-      FlutterPluginEngagelab.checkNotificationAuthorizationIos();
-} else if (Platform.isAndroid) {
-      FlutterPluginEngagelab.initAndroid();
-}
-
-
+// result 包含 code、message、euid、maRid、success
 ```
 
 ## 用户属性管理
@@ -78,12 +68,15 @@ if (Platform.isIOS) {
 
 覆盖更新用户属性，如果属性已存在则会被覆盖。
 
-- 参数传入字典。key值必须是String类型。value值支持String/Number/List类型， List类型的内部数值必须是String类型。
+- 参数传入 Map，key 必须是字符串。value 支持字符串、有限数字、布尔值、字符串数组、Map（`object`），以及 Map 数组（`object_array`）；不支持继续嵌套 `object`/`object_array`。
 - 如果某个用户属性之前已经存在了，则这次会被覆盖掉；不存在，则会创建。如：用户会员等级。
 
 ```dart
 final result = await FlutterPluginEngagelabMa.setUserProperties({
-    'name': 'John Doe'
+  'name': 'John Doe',
+  'devices': <Map<String, Object?>>[
+    {'device_id': 'device_1', 'enabled': true},
+  ],
 });
 
 // 返回结果
@@ -129,6 +122,46 @@ final result = await FlutterPluginEngagelabMa.appendUserProperties(
 }
 ```
 
+### 操作 object_array 元素
+
+Android 和 iOS MA 5.5.0 及以上版本支持单独更新、追加和删除 `object_array` 元素。属性尚未创建时，需要先通过 `setUserProperties` 传入非空对象数组完成首次设置。原有 `appendUserProperties`、`removeUserProperties` 仍只用于字符串数组。
+
+按唯一标识更新匹配对象的子字段。`identifierValue` 只支持字符串或有限数字；`values` 不能修改标识字段，其中 `null` 表示删除对应子字段。
+
+```dart
+final result = await FlutterPluginEngagelabMa.updateObjectArrayProperty(
+  property: 'devices',
+  identifierKey: 'device_id',
+  identifierValue: 'device_1',
+  values: <String, Object?>{
+    'enabled': false,
+    'legacy_name': null,
+  },
+);
+```
+
+追加一个非空对象，不影响已有元素：
+
+```dart
+final result = await FlutterPluginEngagelabMa.appendObjectArrayProperty(
+  property: 'devices',
+  object: <String, Object?>{
+    'device_id': 'device_2',
+    'year': 2026,
+  },
+);
+```
+
+按唯一标识删除整个对象元素：
+
+```dart
+final result = await FlutterPluginEngagelabMa.removeObjectArrayProperty(
+  property: 'devices',
+  identifierKey: 'device_id',
+  identifierValue: 'device_2',
+);
+```
+
 ### 移除用户属性
 
 - 从数组类型的属性中移除指定的值。
@@ -170,7 +203,9 @@ final result =
 ```dart
 final result = await FlutterPluginEngagelabMa.setUserIdentity(
     userId: "your_user_id",     // 可选
-    anonymousId: "anon_id"      // 可选
+    anonymousId: "anon_id",     // 可选
+    email: "user@example.com",  // 可选
+    phone: "+8613800138000",    // 可选
 );
 ```
 
@@ -191,8 +226,33 @@ final result = await FlutterPluginEngagelabMa.setUserContact({
 
 获取用户的 EUID。
 
+SDK 尚未初始化成功或身份尚未生成时返回空字符串。
+
 ```dart
 final euid = await FlutterPluginEngagelabMa.getEuid();
+```
+
+### 获取 MA RID
+
+Android 和 iOS 5.5.0 及以上版本支持。
+
+SDK 尚未初始化成功或身份尚未生成时返回空字符串。MA RID 与 Push RID 是两个不同的设备标识，不能混用。
+
+```dart
+final maRid = await FlutterPluginEngagelabMa.getMaRid();
+```
+
+### 设置第三方 Push 通道
+
+Android 和 iOS 5.5.0 及以上版本支持，用于设置第三方 Push 的 RID 或 Token。应用同时集成 EngageLab AppPush 和 MA 时，AppPush 注册成功取得 RID 后，MA SDK 会自动将 AppPush 的 AppKey/RID 与当前 MA 身份关联，无需调用此接口；其他第三方 Push 仍需主动设置。
+
+`channelId` 必须大于 0；Flutter 在两端统一去除每个 RID/Token 的首尾空白，不修改传入列表。`values` 不能为空，且裁剪后的每个字符串都不能为空。RID 或 Token 发生变化后需要再次调用。
+
+```dart
+final result = await FlutterPluginEngagelabMa.setChannelValue(
+  channelId: 1,
+  values: ['third_party_push_token'],
+);
 ```
 
 ### 设置上报间隔
@@ -286,6 +346,20 @@ final result = await FlutterPluginEngagelabMa.eventRecord(
 ## 注意事项
 
 1. 所有异步方法都返回 `Future`，需要使用 `async/await` 或 `.then()` 处理结果
-2. 所有方法都可能抛出 `PlatformException`，建议使用 try-catch 进行错误处理
+2. 原生业务回调的 `code`、`message` 原样返回；非零 code 不会自动抛异常，message 不保证是 JSON，两端的错误码含义和文案也不保证相同。
+3. 新增对象数组更新、追加、删除接口沿用旧属性接口：遇到 `PlatformException` 返回 `{'code': -1, 'message': '错误说明'}`。新增 `setChannelValue` 沿用联系方式接口：桥接异常保留异常 code，补充说明后抛出。`start`、身份接口维持原有异常处理。
+4. 新接口的 Dart 参数校验失败抛出 `ArgumentError`；仅 Android 支持的 `configDebugMode` 在 iOS 抛出 `UnsupportedError`。原生初始化结果统一为 `code/message/euid/maRid/success`，不会额外映射业务错误码或解析 message。仅凭调用正常返回不能认定操作成功，应检查业务 code。
 3. 用户属性相关的操作都支持批量处理，可以一次设置多个属性
 4. 在进行用户属性操作之前，确保已经成功初始化 SDK
+
+## Android MA 调试日志
+
+Android MA 5.5.0+ 新增独立日志开关，默认关闭。建议在初始化前调用：
+
+```dart
+await FlutterPluginEngagelabMa.configDebugMode(true);
+// 关闭时传 false。
+```
+
+直接桥接原生 MTMAApi.configDebugMode，不改变 Push 日志开关。
+仅支持 Android；iOS 和其他平台抛出 UnsupportedError。

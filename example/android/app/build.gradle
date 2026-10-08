@@ -41,28 +41,6 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-
-        manifestPlaceholders = [
-                //appKey，需要与控制台上的一样，与packageName是一对一关系
-                ENGAGELAB_PRIVATES_APPKEY : "a1b69af966bbf7d5fe6bc774",
-                // Engagelab appChannel，用于渠道统计
-                ENGAGELAB_PRIVATES_CHANNEL: "developer",
-                // Engagelab process，Engagelabsdk工作所在的进程，注意:开头
-                ENGAGELAB_PRIVATES_PROCESS: ":remote",
-                XIAOMI_APPID            : "",
-                XIAOMI_APPKEY           : "",
-                MEIZU_APPID            : "",
-                MEIZU_APPKEY           : "",
-                OPPO_APPID             : "",
-                OPPO_APPKEY            : "",
-                OPPO_APPSECRET         : "",
-                VIVO_APPID             : "105481245",
-                VIVO_APPKEY            : "8ce86005c2bc8a4db5178210b51eeb8a",
-                HONOR_APPID            : "",
-                APP_TCP_SSL            : "",
-                APP_DEBUG            : "",
-                COUNTRY_CODE            : ""
-        ]
     }
 
     buildTypes {

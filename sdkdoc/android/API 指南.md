@@ -2,41 +2,99 @@
 
 ## SDK 接口说明
 
-- MTMAApi，包含 SDK 所有接口。
+- MTMAApi，包含 MA 功能的所有接口。
 
-## 启用MA功能
+> 本页为独立版原生 Android MA SDK 的接口参考，与 `android/doc/mt-sdk-push/ma/API 指南.md` 对齐。Flutter 对应接口、参数约束和示例见 [Flutter API 文档](../../cndocuments/APIs.md)。下文旧接口的“开始支持版本”表示首次引入时间，不表示独立初始化从 5.0.0 起可用。
 
-#### 支持的版本
+## 获取 SDK 版本
 
-开始支持的版本： 5.0.0
+开始支持的版本：5.5.0
+
+- `MTMAApi.SDK_VERSION_CODE`：MA SDK 数字版本号。
+- `MTMAApi.SDK_VERSION_NAME`：MA SDK 字符串版本号。
+
+```java
+int versionCode = MTMAApi.SDK_VERSION_CODE;
+String versionName = MTMAApi.SDK_VERSION_NAME;
+```
+
+## 设置调试模式
+
+开始支持的版本：5.5.0
+
+- **_configDebugMode(boolean enable)_**
+  - 接口说明：开启或关闭 MA SDK 调试日志。
+  - 参数说明：`enable` 为 `true` 时开启，为 `false` 时关闭。
+  - 调用说明：建议在调用 `start` 前设置；发布版本建议关闭调试日志。
+
+```java
+MTMAApi.configDebugMode(true);
+```
+
+## 启用 MA 功能（独立版 5.5.0）
+
+开始支持的版本：5.5.0
 
 #### 接口定义
 
-- **_start(UserIdentity userIdentity,CallBack callBack)_** 
-   - 接口说明： 
-      - 开始使用 MA 功能，启用时可以同时设置用户标识信息
-    - 参数说明：
-      - userIdentity：调用标识，如果没有可设置 null
-        - setUserId(String userId)：userId，将唯一的登录用户标识设置在此
-        - setAnonymousId(String anonymousId)：anonymousId，当用户未登录，但提供了其他可作为标识的信息时，可将其设置为匿名ID，如邮箱地址、第三方生成的标识ID
-      - callBack：结果数据回调
-   - 返回说明：<br />**_onCallBack(int code, String message)_** 
-      - code: 返回码，0 代表获取成功，-1 为失败，详见 message 参数描述
-      - message：原因描述
+- **_start(MTMAConfig config, MTMAInitResultCallback callback)_**
+  - 接口说明：使用 MA AppKey 初始化独立版 MA SDK，无需集成或等待 Push。
+  - 参数说明：
+    - `config`：初始化配置。
+      - `MTMAConfig(String appKey)`：仅设置 MA AppKey。
+      - `MTMAConfig(String appKey, UserIdentity userIdentity)`：设置 MA AppKey，并可同时设置用户标识。
+    - `callback`：初始化结果回调。
+  - 返回说明：`onResult(MTMAInitResult result)`
+    - `isSuccess()`：初始化是否成功。
+    - `getCode()`：结果码，`0` 表示成功。
+    - `getMessage()`：结果描述。
+    - `getEuid()`：初始化成功后取得的 EUID。
+    - `getMaRid()`：初始化成功后取得的 MA RID。
+  - 调用说明：
+    - 服务端身份请求最终失败时，本次初始化回调失败；只有初始化成功后，其他 MA 业务 API 及身份查询接口才可用。
+    - Android MA SDK 只支持在宿主应用主进程初始化。在非主进程调用 `start` 会通过回调返回失败，不会发起网络请求。
 
 #### 调用示例
 
+```java
+MTMAConfig config = new MTMAConfig("your MA AppKey");
+MTMAApi.getInstance(this).start(config, new MTMAInitResultCallback() {
+    @Override
+    public void onResult(MTMAInitResult result) {
+        if (result.isSuccess()) {
+            String euid = result.getEuid();
+            String maRid = result.getMaRid();
+        } else {
+            int code = result.getCode();
+            String message = result.getMessage();
+        }
+    }
+});
 ```
-                MTMAApi.getInstance(this).start(new CallBack() {
-                    @Override
-                    public void onCallBack(int code, String message) {
-                        Log.e(TAG, "start code:" + code);
-                        Log.e(TAG, "startmessage:" + message);
 
-                    }
-                });
-```
+#### 运行时切换 MA AppKey
 
+在同一主进程内，上一次初始化回调完成后，可使用新的 `MTMAConfig` 再次调用 `start`。切换期间其他 MA 业务 API 暂不可用；新 AppKey 初始化失败时不会自动回退到旧 AppKey。
+
+#### 废弃接口
+
+从 5.5.0 开始，以下接口已废弃，独立版 MA SDK 不再使用，调用会返回 `CODE_VALID (-3)`：
+
+- `start(CallBack callBack)`
+- `start(UserIdentity userIdentity, CallBack callBack)`
+
+请改用 `start(MTMAConfig config, MTMAInitResultCallback callback)`，显式传入 MA AppKey。
+
+### 独立版新增接口
+
+| 原生接口 | 用途 |
+| --- | --- |
+| `configDebugMode(boolean)` | 独立 MA 日志开关，默认关闭 |
+| `getMaRid()` | 获取 MA RID，与 Push RID 区分 |
+| `setChannelValue(long, List<String>, CallBack)` | 第三方 Push 通道 RID/Token；AppPush 自动绑定 |
+| `updateObjectArrayProperty(String, String, Object, JSONObject, CallBack)` | 按唯一标识更新对象数组元素 |
+| `addObjectArrayProperty(String, JSONObject, CallBack)` | 追加对象数组元素 |
+| `removeObjectArrayProperty(String, String, Object, CallBack)` | 按唯一标识移除对象数组元素 |
 
 ## 设置用户标识
 
@@ -53,11 +111,15 @@
       - 设置用户标识，如：用户会员卡号。
    - 参数说明： 
        - userIdentity：调用标识
-           - setUserId(String userId)：userId，将唯一的登录用户标识设置在此
-           - setAnonymousId(String anonymousId)：anonymousId，当用户未登录，但提供了其他可作为标识的信息时，可将其设置为匿名ID，如邮箱地址、第三方生成的标识ID
+           - setUserId(String userId)：去除首尾空格后不能为空，最长 255 个 Unicode 字符；不能为 `0`、`null`、`undefined`、`nan`（忽略大小写）
+           - setAnonymousId(String anonymousId)：去除首尾空格后不能为空，最长 256 个 Unicode 字符
+           - setEmail(String email)：不能为空，最长 256 个 Unicode 字符；必须包含且只能包含一个 `@`，`@` 前后都不能为空，且不能包含空格、换行或 Tab；5.5.0 版本开始支持
+           - setPhone(String phone)：必须符合 E.164 格式，以 `+` 开头，国家码首位为 1–9，之后包含 1–14 位数字；5.5.0 版本开始支持
        - callBack：接口回调
    - 返回说明：<br />**_onCallBack(int code, String message)_** 
       - code: 返回码，0 代表获取成功，-1 为失败，详见 message 参数描述
+
+用户标识字段校验失败时不发送网络请求，并通过回调返回 `code = -3`。
 
 #### 调用示例
 
@@ -65,6 +127,8 @@
                 UserIdentity userIdentity = new UserIdentity();
                 userIdentity.setUserId("您的userId");
                 userIdentity.setAnonymousId("您的AnonymousId");
+                userIdentity.setEmail("user@example.com");
+                userIdentity.setPhone("+8613800138000");
                 MTMAApi.getInstance(this).setUserIdentity(userIdentity, new CallBack() {
                     @Override
                     public void onCallBack(int code, String message) {
@@ -125,12 +189,56 @@
 
 - **_getEuid()_** 
    - 接口说明： 
-      - 获取 euid。表示用户唯一 id
+      - 获取 euid，表示用户唯一 id。仅初始化成功时返回当前值，未初始化、初始化中或初始化失败时返回空值。
 
 #### 调用示例
 
 ```
 MTMAApi.getInstance(this).getEuid();
+```
+
+## 获取 MA RID
+
+#### 支持的版本
+
+开始支持的版本：5.5.0
+
+#### 接口定义
+
+- **_getMaRid()_**
+  - 接口说明：获取当前 MA RID。仅初始化成功时返回当前值，未初始化、初始化中或初始化失败时返回空值。MA RID 与 Push RID 是两个不同的设备标识，不能混用。
+
+#### 调用示例
+
+```java
+String maRid = MTMAApi.getInstance(this).getMaRid();
+```
+
+## 设置通道联系ID
+
+#### 支持的版本
+
+开始支持的版本：5.5.0
+
+#### 接口定义
+
+- **_setChannelValue(long channelId, List<String> values, CallBack callBack)_**
+  - 接口说明：设置通道联系ID。AppPush 通道由 SDK 自动绑定，不需要调用该接口设置。
+  - 参数说明：
+    - `channelId`：MA 控制台配置的第三方 Push 通道 ID，必须大于 `0`。
+    - `values`：通道联系ID的值列表（例如 RID 或 Token），不能为空，列表元素也不能为空。
+    - `callBack`：结果回调，`code == 0` 表示成功。
+
+#### 调用示例
+
+```java
+List<String> values = Collections.singletonList("push rid or token");
+MTMAApi.getInstance(this).setChannelValue(136L, values, new CallBack() {
+    @Override
+    public void onCallBack(int code, String message) {
+        // code == 0 表示成功
+    }
+});
 ```
 
 ## 设置上报数据间隔
@@ -228,7 +336,7 @@ MTMAApi.getInstance(this).getEuid();
                 utmProperties.setUtmTerm("您的utm_term");
                 MTMAApi.getInstance(this).setUtmProperties(utmProperties);
 ```
-## 设置 采集权限
+## 数据采集控制
 
 #### 支持的版本
 
@@ -238,15 +346,25 @@ MTMAApi.getInstance(this).getEuid();
 
 - **_setCollectControl(MTMACollectControl control)_** 
    - 接口说明： 
-      - 设置 采集权限，如果需要开启/关闭某些数据采集，请调用本接口
+      - 设置采集权限，如果需要开启/关闭某些数据采集，请调用本接口
    - 参数说明： 
-      - control： 权限设置，默认开
+      - control：采集权限设置；未显式设置的属性使用下列默认值
+        - `setCarrier(boolean enable)`：是否采集运营商信息，默认开启
+        - `setMacAddress(boolean enable)`：是否采集 MAC 地址，默认关闭
+        - `setGAID(boolean enable)`：是否采集 GAID，默认关闭
+        - `setOAID(boolean enable)`：是否采集 OAID，默认关闭
+        - `setAAID(boolean enable)`：是否采集 AAID，默认关闭
+        - `setIMEI(boolean enable)`：是否采集 IMEI，默认关闭；仅 Android 9及以下支持，宿主应用需要自行声明并获取 `READ_PHONE_STATE` 权限
 
 #### 调用示例
 
 ```
 try {
 MTMACollectControl mtmaCollectControl = new MTMACollectControl();
+        mtmaCollectControl.setCarrier(true);
+        mtmaCollectControl.setMacAddress(true);
+        mtmaCollectControl.setGAID(true);
+        mtmaCollectControl.setOAID(true);
         mtmaCollectControl.setIMEI(true);
         mtmaCollectControl.setAAID(true);
     MTMAApi.getInstance(this).setCollectControl(mtmaCollectControl);
@@ -264,6 +382,7 @@ MTMACollectControl mtmaCollectControl = new MTMACollectControl();
    - 接口说明： 
       - 批量覆盖更新用户属性的值
       - 仅保存最新上报的数据，覆盖历史数据，如：用户会员等级。
+      - Value 支持字符串、数字、布尔值、字符串数组、`JSONObject`，以及元素全部为 `JSONObject` 的 `JSONArray`（object_array）。
    - 参数说明： 
       - properties: 用户属性
       - callBack：接口回调
@@ -288,6 +407,7 @@ try {JSONObject properties = new JSONObject();
    - 接口说明： 
       - 单个覆盖更新用户属性的值
       - 仅保存最新上报的数据，覆盖历史数据，如：用户会员等级。
+      - Value 类型规则与批量 `propertySet` 一致。
    - 参数说明： 
       - property: 用户属性名
       - value: 用户属性值
@@ -392,6 +512,39 @@ MTMAApi.getInstance(this).propertyAdd("你的用户属性名",properties, new Ca
     public void onCallBack(int code, String message) {}});
 ```
 
+### 操作 object_array 元素
+
+以下接口从 5.5.0 开始支持。它们只用于 `object_array` 用户属性；原有 `propertyAdd`、`propertyRemove` 仍用于字符串数组，行为保持不变。属性尚未创建时，需要先通过 `propertySet` 传入非空对象数组完成首次设置。
+
+- **_updateObjectArrayProperty(String property, String identifierKey, Object identifierValue, JSONObject values, CallBack callBack)_**
+  - 根据唯一标识更新一个对象元素的子字段。
+  - `identifierValue` 支持字符串或有限数字；`values` 不能修改标识字段。
+  - `values` 中使用 `JSONObject.NULL` 可删除对应子字段。
+
+```java
+JSONObject values = new JSONObject().put("enabled", false);
+MTMAApi.getInstance(this).updateObjectArrayProperty(
+        "devices", "device_id", "device_1", values, callBack);
+```
+
+- **_addObjectArrayProperty(String property, JSONObject object, CallBack callBack)_**
+  - 向 `object_array` 追加一个非空对象元素，不影响已有元素。
+
+```java
+JSONObject device = new JSONObject()
+        .put("device_id", "device_2")
+        .put("year", 2026);
+MTMAApi.getInstance(this).addObjectArrayProperty("devices", device, callBack);
+```
+
+- **_removeObjectArrayProperty(String property, String identifierKey, Object identifierValue, CallBack callBack)_**
+  - 根据唯一标识删除整个对象元素。
+
+```java
+MTMAApi.getInstance(this).removeObjectArrayProperty(
+        "devices", "device_id", "device_2", callBack);
+```
+
 ### 移除用户属性
 
 - **_propertyRemove(final String property, String values, final CallBack callBack)_** 
@@ -485,13 +638,14 @@ properties.put("key2","v2");
 MTMAApi.getInstance(this).onEvent("你的事件名称",property );
 ```
 
-## 错误码：
+## 错误码
+
 | code               | 值  | 说明           |
 |-------------------|-----|---------------|
 | CODE_SUCCEED      | 0   | 成功         |
 | CODE_UNKNOWN      | -1  | 未知错误      |
-| CODE_START_FAIL   | -2  | 没有调用start或调用start还未成功或项目切换，再调用start  |
+| CODE_START_FAIL   | -2  | 初始化未完成、初始化失败或当前操作依赖的 MA 配置未就绪 |
 | CODE_VALID        | -3  | 参数校验失败   |
-| CODE_ENABLE       | -4  | 项目关闭 |
-| CODE_REGISTRATIONID| -5 | push没有注册成功  |
-| CODE_SWITCH        | -6 | 项目切换，需要再次调用start |
+| CODE_ENABLE       | -4  | MA 项目已关闭 |
+| CODE_REGISTRATIONID| -5 | MA RID 缺失或不合法 |
+| CODE_SWITCH        | -6 | MA 项目配置已切换，需要再次调用 `start` |

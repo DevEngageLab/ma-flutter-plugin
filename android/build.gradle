@@ -34,20 +34,14 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 23
     }
 
     dependencies {
         testImplementation 'junit:junit:4.13.2'
         testImplementation 'org.mockito:mockito-core:5.0.0'
-        //必须 主包
-        // implementation 'com.engagelab:engagelab:5.0.0' // 此处以5.0.0 版本为例。
-        //可选，ma功能
-        // implementation 'com.engagelab.plugin:oth_ma:5.0.0' // 此处以5.0.0 版本为例。
-
-        // implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
-
-        implementation 'com.engagelab.plugin:oth_ma:5.3.0'
+        testImplementation 'org.json:json:20240303'
+        implementation 'com.engagelab.plugin:oth_ma:5.5.0'
 
     }
 

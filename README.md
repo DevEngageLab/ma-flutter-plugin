@@ -4,12 +4,13 @@
 
 Add the following dependencies to your `pubspec.yaml` file:
 
-The flutter_plugin_engagelab_ma plugin cannot be used alone, it requires the [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) plugin to be integrated simultaneously.
+On Android and iOS, MA 5.5.0 can be initialized independently. Add the [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) plugin only when Push capabilities are also required.
+
+The plugin resolves Android MA 5.5.0 from Maven Central and iOS MTMA 5.5.0 from CocoaPods. No local SDK artifacts are required.
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab: ^1.3.4+523523
-  flutter_plugin_engagelab_ma: ^1.0.3+530532
+  flutter_plugin_engagelab_ma: ^1.0.4+550550
 ```
 
 Navigate to the ios directory:
@@ -19,7 +20,22 @@ Run pod install
 
 ##### Android:
 
-Add the following code to `/android/app/build.gradle`:
+See the [API reference](./documents/APIs.md) for usage.
+
+Requires Android API 23 or later. The plugin resolves
+`com.engagelab.plugin:oth_ma:5.5.0` from Maven Central and declares the Internet
+permission for standalone MA.
+
+For AppPush auto-binding, use native Push SDK `5.5.0` or later. If the Flutter
+Push plugin still requests an older version, add this to the app's Gradle file:
+
+```groovy
+dependencies {
+  implementation 'com.engagelab:engagelab:5.5.0'
+}
+```
+
+When Push is also integrated, add its configuration to `/android/app/build.gradle`:
 
 ```groovy
 android: {
@@ -49,17 +65,26 @@ android: {
 }
 ```
 
+##### iOS:
+
+Requires iOS 10 or later, matching the native standalone MTMA 5.5.0 SDK.
+The plugin resolves `MTMA` 5.5.0 from CocoaPods. Set your development team and
+bundle identifier in Xcode before running.
+
 ### Usage
 
 ```dart
-import 'package:flutter_plugin_engagelab/flutter_plugin_engagelab.dart';
 import 'package:flutter_plugin_engagelab_ma/flutter_plugin_engagelab_ma.dart';
 ```
 
 ### APIs
 
-**Note**: 
-The flutter_plugin_engagelab_ma plugin cannot be used alone, it requires the flutter_plugin_engagelab plugin to be integrated simultaneously.
-Before calling the FlutterPluginEngagelabMa.start method to initialize the MA plugin, please initialize the flutter_plugin_engagelab plugin first.
+On Android and iOS, initialize MA directly with its MA AppKey. Push initialization is optional:
 
-[Reference](./documents/APIs.md)
+```dart
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: 'your_ma_app_key',
+);
+```
+
+[API reference](./documents/APIs.md) · [Example and integration tests](./example/README.md)

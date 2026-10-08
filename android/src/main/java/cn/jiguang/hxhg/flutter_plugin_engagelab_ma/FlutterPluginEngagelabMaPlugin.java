@@ -14,6 +14,9 @@ import org.json.JSONObject;
 
 import com.engagelab.privates.push.oth.ma.api.MTMAApi;
 import com.engagelab.privates.push.oth.ma.api.MTMACollectControl;
+import com.engagelab.privates.push.oth.ma.api.MTMAConfig;
+import com.engagelab.privates.push.oth.ma.api.MTMAInitResult;
+import com.engagelab.privates.push.oth.ma.api.MTMAInitResultCallback;
 import com.engagelab.privates.push.oth.ma.api.UserIdentity;
 import com.engagelab.privates.push.oth.ma.api.UtmProperties;
 import com.engagelab.privates.push.oth.ma.api.CallBack;
@@ -55,11 +58,82 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
     }
   }
 
+  private static Map<String, Object> createResultMap(int code, String message) {
+    Map<String, Object> resultMap = new HashMap<>();
+    resultMap.put("code", code);
+    resultMap.put("message", message == null ? "" : message);
+    return resultMap;
+  }
 
+  private static Map<String, Object> createInitResultMap(
+      int code, String message, String euid, String maRid, boolean success) {
+    Map<String, Object> resultMap = createResultMap(code, message);
+    resultMap.put("euid", euid == null ? "" : euid);
+    resultMap.put("maRid", maRid == null ? "" : maRid);
+    resultMap.put("success", success);
+    return resultMap;
+  }
+
+  static JSONObject createJsonObject(Map<?, ?> values) throws Exception {
+    JSONObject jsonObject = new JSONObject();
+    for (Map.Entry<?, ?> entry : values.entrySet()) {
+      if (!(entry.getKey() instanceof String)) {
+        throw new IllegalArgumentException("JSON object keys must be strings");
+      }
+      jsonObject.put((String) entry.getKey(), createJsonValue(entry.getValue()));
+    }
+    return jsonObject;
+  }
+
+  private static Object createJsonValue(Object value) throws Exception {
+    if (value == null) {
+      return JSONObject.NULL;
+    }
+    if (value instanceof Map) {
+      return createJsonObject((Map<?, ?>) value);
+    }
+    if (value instanceof List) {
+      JSONArray jsonArray = new JSONArray();
+      for (Object item : (List<?>) value) {
+        jsonArray.put(createJsonValue(item));
+      }
+      return jsonArray;
+    }
+    return value;
+  }
+
+  private static boolean isValidIdentifierValue(Object value) {
+    if (value instanceof String) {
+      return true;
+    }
+    if (!(value instanceof Number)) {
+      return false;
+    }
+    double number = ((Number) value).doubleValue();
+    return !Double.isNaN(number) && !Double.isInfinite(number);
+  }
+
+  private static void returnInvalidObjectArrayArguments(Result result, String message) {
+    result.success(createResultMap(CallBack.CODE_VALID, message));
+  }
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    if (call.method.equals("start")) {
+    if (call.method.equals("configDebugMode")) {
+      Boolean enable = call.argument("enable");
+      if (enable == null) {
+        result.error("INVALID_ARGUMENT", "enable is required", null);
+        return;
+      }
+      MTMAApi.configDebugMode(enable);
+      result.success(null);
+    } else if (call.method.equals("start")) {
+      String appKey = call.argument("appKey");
+      if (appKey == null || appKey.trim().isEmpty()) {
+        result.success(createInitResultMap(
+                CallBack.CODE_VALID, "MA AppKey is required", "", "", false));
+        return;
+      }
       UserIdentity userIdentity = new UserIdentity();
       String userId = call.argument("userId"); // 可能返回 null
       if (userId != null) {
@@ -69,7 +143,33 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
       if (anonymousId != null) {
         userIdentity.setAnonymousId(anonymousId);
       }
-      MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).start(userIdentity,new MTMACallBack(result));
+      String email = call.argument("email");
+      if (email != null) {
+        userIdentity.setEmail(email);
+      }
+      String phone = call.argument("phone");
+      if (phone != null) {
+        userIdentity.setPhone(phone);
+      }
+      MTMAConfig config = new MTMAConfig(appKey, userIdentity);
+      MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).start(
+              config, new MTMAInitResultCallback() {
+                @Override
+                public void onResult(MTMAInitResult initResult) {
+                  if (initResult == null) {
+                    result.success(createInitResultMap(
+                            CallBack.CODE_UNKNOWN,
+                            "MA initialization returned no result", "", "", false));
+                    return;
+                  }
+                  result.success(createInitResultMap(
+                          initResult.getCode(),
+                          initResult.getMessage(),
+                          initResult.getEuid(),
+                          initResult.getMaRid(),
+                          initResult.isSuccess()));
+                }
+              });
     } else if (call.method.equals("setUserIdentity")) {
       UserIdentity userIdentity = new UserIdentity();
       String userId = call.argument("userId"); // 可能返回 null
@@ -80,17 +180,24 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
       if (anonymousId != null) {
         userIdentity.setAnonymousId(anonymousId);
       }
+      String email = call.argument("email");
+      if (email != null) {
+        userIdentity.setEmail(email);
+      }
+      String phone = call.argument("phone");
+      if (phone != null) {
+        userIdentity.setPhone(phone);
+      }
       MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).setUserIdentity(userIdentity, new MTMACallBack(result));
     } else if (call.method.equals("setUserContact")) {
       try {
-        Map<String, Object> arguments = call.arguments();
-        JSONObject contacts = new JSONObject();
-        // 遍历 Map
-        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-          String key = entry.getKey();
-          Object value = entry.getValue();
-          contacts.put(key, value);
+        Map<?, ?> contactValues = call.argument("contacts");
+        if (contactValues == null) {
+          result.success(createResultMap(
+                  CallBack.CODE_VALID, "contacts must not be null"));
+          return;
         }
+        JSONObject contacts = createJsonObject(contactValues);
         MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).setUserContact(contacts, new MTMACallBack(result));
       } catch (Exception e) {
         result.error("ERROR", e.getMessage(), null);
@@ -98,6 +205,77 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
     } else if (call.method.equals("getEuid")) {
       String euid = MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).getEuid();
       result.success(euid);
+    } else if (call.method.equals("getMaRid")) {
+      String maRid = MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).getMaRid();
+      result.success(maRid == null ? "" : maRid);
+    } else if (call.method.equals("setChannelValue")) {
+      Number channelId = call.argument("channelId");
+      List<String> values = call.argument("values");
+      if (channelId == null || channelId.longValue() <= 0 ||
+              values == null || values.isEmpty()) {
+        result.success(createResultMap(
+                CallBack.CODE_VALID,
+                "channelId must be greater than 0 and values must not be empty"));
+      } else {
+        MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+                .setChannelValue(channelId.longValue(), values, new MTMACallBack(result));
+      }
+    } else if (call.method.equals("updateObjectArrayProperty")) {
+      String property = call.argument("property");
+      String identifierKey = call.argument("identifierKey");
+      Object identifierValue = call.argument("identifierValue");
+      Map<?, ?> values = call.argument("values");
+      if (property == null || property.trim().isEmpty() ||
+              identifierKey == null || identifierKey.trim().isEmpty() ||
+              !isValidIdentifierValue(identifierValue) ||
+              values == null || values.isEmpty() || values.containsKey(identifierKey)) {
+        returnInvalidObjectArrayArguments(
+                result, "object_array update parameters are invalid");
+        return;
+      }
+      try {
+        MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+                .updateObjectArrayProperty(
+                        property,
+                        identifierKey,
+                        identifierValue,
+                        createJsonObject(values),
+                        new MTMACallBack(result));
+      } catch (Exception e) {
+        returnInvalidObjectArrayArguments(
+                result, "object_array update parameters are invalid: " + e.getMessage());
+      }
+    } else if (call.method.equals("appendObjectArrayProperty")) {
+      String property = call.argument("property");
+      Map<?, ?> object = call.argument("object");
+      if (property == null || property.trim().isEmpty() ||
+              object == null || object.isEmpty()) {
+        returnInvalidObjectArrayArguments(
+                result, "object_array append parameters are invalid");
+        return;
+      }
+      try {
+        MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+                .addObjectArrayProperty(
+                        property, createJsonObject(object), new MTMACallBack(result));
+      } catch (Exception e) {
+        returnInvalidObjectArrayArguments(
+                result, "object_array append parameters are invalid: " + e.getMessage());
+      }
+    } else if (call.method.equals("removeObjectArrayProperty")) {
+      String property = call.argument("property");
+      String identifierKey = call.argument("identifierKey");
+      Object identifierValue = call.argument("identifierValue");
+      if (property == null || property.trim().isEmpty() ||
+              identifierKey == null || identifierKey.trim().isEmpty() ||
+              !isValidIdentifierValue(identifierValue)) {
+        returnInvalidObjectArrayArguments(
+                result, "object_array removal parameters are invalid");
+        return;
+      }
+      MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+              .removeObjectArrayProperty(
+                      property, identifierKey, identifierValue, new MTMACallBack(result));
     } else if (call.method.equals("setReportInterval")) {
       Integer interval = call.argument("interval");
       MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).setReportInterval(interval);
