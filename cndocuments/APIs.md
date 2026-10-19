@@ -72,10 +72,16 @@ final result = await FlutterPluginEngagelabMa.start(
   appKey: '您的 MA AppKey',
   dataCollectionEnabled: false,
 );
-if (result['success'] == true) {
-  await FlutterPluginEngagelabMa.setDataCollectionEnabled(true);
-  final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
+```
+
+初始化成功后，在业务授权变更回调中传入用户的实际选择：
+
+```dart
+Future<void> onConsentChanged(bool consentGranted) async {
+  await FlutterPluginEngagelabMa.setDataCollectionEnabled(consentGranted);
 }
+
+final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
 ```
 
 `start` 的 `dataCollectionEnabled` 为可选 `bool?`。不传或传 null 时沿用原生规则：Android

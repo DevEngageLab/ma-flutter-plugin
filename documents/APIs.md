@@ -68,10 +68,16 @@ final result = await FlutterPluginEngagelabMa.start(
   appKey: 'your_ma_app_key',
   dataCollectionEnabled: false,
 );
-if (result['success'] == true) {
-  await FlutterPluginEngagelabMa.setDataCollectionEnabled(true);
-  final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
+```
+
+After initialization succeeds, submit the user's choice from your consent handler:
+
+```dart
+Future<void> onConsentChanged(bool consentGranted) async {
+  await FlutterPluginEngagelabMa.setDataCollectionEnabled(consentGranted);
 }
+
+final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
 ```
 
 `start(dataCollectionEnabled: ...)` accepts `true`, `false`, or an omitted/null value.
