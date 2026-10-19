@@ -7,11 +7,11 @@
 
 Android 和 iOS MA 5.5.0 均支持独立初始化；只有需要 Push 能力时才需要同时集成 [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) 插件。
 
-插件通过 Maven Central 引入 Android MA 5.5.0，通过 CocoaPods 引入 iOS MTMA 5.5.0，无需本地 SDK 制品。
+插件通过 Maven Central 引入 Android MA 5.5.2，通过 CocoaPods 引入 iOS MTMA 5.5.1，无需本地 SDK 制品。
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab_ma: ^1.0.4+550550
+  flutter_plugin_engagelab_ma: ^1.0.5+552551
 ```
 
 cd 到 ios 目录下：
@@ -23,7 +23,7 @@ cd 到 ios 目录下：
 
 接口使用方式见 [Flutter API 文档](./APIs.md)。
 
-最低支持 Android API 23。MA 依赖 `com.engagelab.plugin:oth_ma:5.5.0`
+最低支持 Android API 23。MA 依赖 `com.engagelab.plugin:oth_ma:5.5.2`
 从 Maven Central 获取，无需本地构建 SDK。插件已声明联网权限，支持独立 MA 的 release 构建。
 
 AppPush 自动绑定需要原生 Push SDK 5.5.0 或以上版本。如果 Flutter Push 插件仍依赖旧版本，
@@ -78,7 +78,12 @@ Android 和 iOS 端均直接使用 MA AppKey 初始化，Push 初始化为可选
 ```dart
 final result = await FlutterPluginEngagelabMa.start(
   appKey: '您的 MA AppKey',
+  dataCollectionEnabled: false, // 每次按用户当前授权状态传值。
 );
 ```
 
 [API 文档](./APIs.md) · [示例与集成测试](../example/README.md)
+
+初始化成功后调用 `setDataCollectionEnabled(bool)` 切换采集，用
+`isDataCollectionEnabled()` 查询本地状态。两端默认规则及 iOS 未就绪时返回 null
+详见[数据采集开关](./APIs.md#数据采集开关)。

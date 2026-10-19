@@ -1,3 +1,10 @@
+## 1.0.5+552551
+
+* upgrade published native dependencies to Android MA 5.5.2 and iOS MTMA 5.5.1
+* add optional `start(dataCollectionEnabled: ...)`, runtime `setDataCollectionEnabled`, and nullable `isDataCollectionEnabled`
+* preserve native defaults, not-ready query results, and disabled property result code -8 (`codeCollectionDisabled`)
+* add collection switching to the example and document consent initialization and native recovery behavior
+
 ## 1.0.4+550550
 
 * preserve native business codes/messages for new APIs; handle object-array bridge exceptions like existing property APIs and channel bridge exceptions like contact APIs

@@ -30,6 +30,8 @@ import java.util.Set;
 
 /** FlutterPluginEngagelabMaPlugin */
 public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCallHandler {
+  private static final String DATA_COLLECTION_ENABLED = "dataCollectionEnabled";
+  private static final String INVALID_COLLECTION_ARGUMENT = "dataCollectionEnabled must be a boolean";
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
@@ -152,6 +154,14 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
         userIdentity.setPhone(phone);
       }
       MTMAConfig config = new MTMAConfig(appKey, userIdentity);
+      Object dataCollectionEnabled = call.argument(DATA_COLLECTION_ENABLED);
+      if (dataCollectionEnabled != null) {
+        if (!(dataCollectionEnabled instanceof Boolean)) {
+          result.error("INVALID_ARGUMENT", INVALID_COLLECTION_ARGUMENT, null);
+          return;
+        }
+        config.dataCollectionEnabled((Boolean) dataCollectionEnabled);
+      }
       MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).start(
               config, new MTMAInitResultCallback() {
                 @Override
@@ -170,6 +180,18 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
                           initResult.isSuccess()));
                 }
               });
+    } else if (call.method.equals("setDataCollectionEnabled")) {
+      Object enabled = call.argument(DATA_COLLECTION_ENABLED);
+      if (!(enabled instanceof Boolean)) {
+        result.error("INVALID_ARGUMENT", INVALID_COLLECTION_ARGUMENT, null);
+        return;
+      }
+      MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+              .setDataCollectionEnabled((Boolean) enabled);
+      result.success(null);
+    } else if (call.method.equals("isDataCollectionEnabled")) {
+      result.success(MTMAApi.getInstance(flutterPluginBinding.getApplicationContext())
+              .isDataCollectionEnabled());
     } else if (call.method.equals("setUserIdentity")) {
       UserIdentity userIdentity = new UserIdentity();
       String userId = call.argument("userId"); // 可能返回 null

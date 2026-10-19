@@ -199,6 +199,66 @@ void main() {
     expect(result, response);
   });
 
+  test(
+      'start preserves explicit true/false and omits an unset collection choice',
+      () async {
+    for (final enabled in <bool?>[null, false, true]) {
+      await FlutterPluginEngagelabMa.start(
+        appKey: 'ma-key',
+        dataCollectionEnabled: enabled,
+      );
+      final arguments = lastCall!.arguments as Map;
+      expect(arguments.containsKey('dataCollectionEnabled'), enabled != null);
+      if (enabled != null) {
+        expect(arguments['dataCollectionEnabled'], enabled);
+      }
+    }
+  });
+
+  test('collection setter forwards both choices without inventing an ack',
+      () async {
+    response = null;
+    for (final enabled in <bool>[false, true]) {
+      await FlutterPluginEngagelabMa.setDataCollectionEnabled(enabled);
+      expect(lastCall!.method, 'setDataCollectionEnabled');
+      expect(lastCall!.arguments, {'dataCollectionEnabled': enabled});
+    }
+  });
+
+  test('collection query preserves true, false and native not-ready null',
+      () async {
+    for (final enabled in <bool?>[true, false, null]) {
+      response = enabled;
+      expect(await FlutterPluginEngagelabMa.isDataCollectionEnabled(), enabled);
+      expect(lastCall!.method, 'isDataCollectionEnabled');
+    }
+  });
+
+  test('collection bridge failures remain errors', () async {
+    response = PlatformException(code: 'BRIDGE_ERROR', message: 'failed');
+    await expectLater(
+      FlutterPluginEngagelabMa.setDataCollectionEnabled(false),
+      throwsA(isA<PlatformException>()),
+    );
+    await expectLater(
+      FlutterPluginEngagelabMa.isDataCollectionEnabled(),
+      throwsA(isA<PlatformException>()),
+    );
+  });
+
+  test('disabled properties keep the native -8 business result', () async {
+    response = <String, dynamic>{
+      'code': FlutterPluginEngagelabMa.codeCollectionDisabled,
+      'message': 'data collection disabled',
+    };
+    for (final operation in [
+      ...legacyProperties.values,
+      ...objectArrayOperations.values,
+    ]) {
+      expect(await operation(), response);
+    }
+  });
+
   test('start rejects an empty appKey', () {
     expect(FlutterPluginEngagelabMa.start(appKey: '  '), throwsArgumentError);
   });

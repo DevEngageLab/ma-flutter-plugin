@@ -1,15 +1,28 @@
 package cn.jiguang.hxhg.flutter_plugin_engagelab_ma;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.content.Context;
+import com.engagelab.privates.push.oth.ma.api.MTMAApi;
+import com.engagelab.privates.push.oth.ma.api.MTMAConfig;
+import com.engagelab.privates.push.oth.ma.api.MTMAInitResultCallback;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 /**
  * This demonstrates a simple unit test of the Java portion of this plugin's implementation.
@@ -20,6 +33,85 @@ import org.junit.Test;
  */
 
 public class FlutterPluginEngagelabMaPluginTest {
+  private static final String COLLECTION_KEY = "dataCollectionEnabled";
+
+  private FlutterPluginEngagelabMaPlugin pluginWithContext(Context context) throws Exception {
+    FlutterPluginEngagelabMaPlugin plugin = new FlutterPluginEngagelabMaPlugin();
+    FlutterPlugin.FlutterPluginBinding binding = mock(FlutterPlugin.FlutterPluginBinding.class);
+    when(binding.getApplicationContext()).thenReturn(context);
+    Field field = FlutterPluginEngagelabMaPlugin.class.getDeclaredField("flutterPluginBinding");
+    field.setAccessible(true);
+    field.set(plugin, binding);
+    return plugin;
+  }
+
+  @Test
+  public void start_passesExplicitCollectionChoiceAndPreservesUnsetDefault() throws Exception {
+    Context context = mock(Context.class);
+    FlutterPluginEngagelabMaPlugin plugin = pluginWithContext(context);
+    Method choiceGetter = MTMAConfig.class.getDeclaredMethod("getDataCollectionEnabled");
+    choiceGetter.setAccessible(true);
+    for (Boolean enabled : new Boolean[] {null, false, true}) {
+      MTMAApi api = mock(MTMAApi.class);
+      try (MockedStatic<MTMAApi> factory = mockStatic(MTMAApi.class)) {
+        factory.when(() -> MTMAApi.getInstance(context)).thenReturn(api);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("appKey", "0123456789abcdef01234567");
+        if (enabled != null) arguments.put(COLLECTION_KEY, enabled);
+        plugin.onMethodCall(new MethodCall("start", arguments), mock(MethodChannel.Result.class));
+        ArgumentCaptor<MTMAConfig> config = ArgumentCaptor.forClass(MTMAConfig.class);
+        verify(api).start(config.capture(), any(MTMAInitResultCallback.class));
+        assertEquals(enabled, choiceGetter.invoke(config.getValue()));
+      }
+    }
+  }
+
+  @Test
+  public void collectionSwitch_usesNativeSetterAndQueriesNativeState() throws Exception {
+    Context context = mock(Context.class);
+    FlutterPluginEngagelabMaPlugin plugin = pluginWithContext(context);
+    MTMAApi api = mock(MTMAApi.class);
+    try (MockedStatic<MTMAApi> factory = mockStatic(MTMAApi.class)) {
+      factory.when(() -> MTMAApi.getInstance(context)).thenReturn(api);
+      for (boolean enabled : new boolean[] {false, true}) {
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put(COLLECTION_KEY, enabled);
+        MethodChannel.Result setterResult = mock(MethodChannel.Result.class);
+        plugin.onMethodCall(new MethodCall("setDataCollectionEnabled", arguments), setterResult);
+        verify(api).setDataCollectionEnabled(enabled);
+        verify(setterResult).success(null);
+        // The query must use the SDK result, rather than echo the last setter argument.
+        when(api.isDataCollectionEnabled()).thenReturn(!enabled);
+        MethodChannel.Result queryResult = mock(MethodChannel.Result.class);
+        plugin.onMethodCall(new MethodCall("isDataCollectionEnabled", null), queryResult);
+        verify(queryResult).success(!enabled);
+      }
+    }
+  }
+
+  @Test
+  public void collectionSwitch_rejectsMissingOrNonBooleanValues() {
+    FlutterPluginEngagelabMaPlugin plugin = new FlutterPluginEngagelabMaPlugin();
+    for (Object value : new Object[] {null, 0, 1, "false"}) {
+      Map<String, Object> arguments = new HashMap<>();
+      arguments.put(COLLECTION_KEY, value);
+      MethodChannel.Result result = mock(MethodChannel.Result.class);
+      plugin.onMethodCall(new MethodCall("setDataCollectionEnabled", arguments), result);
+      verify(result).error("INVALID_ARGUMENT", "dataCollectionEnabled must be a boolean", null);
+    }
+  }
+
+  @Test
+  public void start_rejectsNonBooleanCollectionChoiceBeforeCallingSdk() {
+    FlutterPluginEngagelabMaPlugin plugin = new FlutterPluginEngagelabMaPlugin();
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("appKey", "0123456789abcdef01234567");
+    arguments.put(COLLECTION_KEY, "false");
+    MethodChannel.Result result = mock(MethodChannel.Result.class);
+    plugin.onMethodCall(new MethodCall("start", arguments), result);
+    verify(result).error("INVALID_ARGUMENT", "dataCollectionEnabled must be a boolean", null);
+  }
+
   private static Map<String, Object> errorResult(String message) {
     Map<String, Object> expected = new HashMap<>();
     expected.put("code", -3);

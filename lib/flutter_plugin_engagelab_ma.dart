@@ -4,6 +4,10 @@ import 'package:flutter/services.dart';
 class FlutterPluginEngagelabMa {
   static const MethodChannel _channel =
       MethodChannel('flutter_plugin_engagelab_ma');
+  static const String _dataCollectionEnabledKey = 'dataCollectionEnabled';
+
+  /// 采集关闭时，属性接口返回的原生业务错误码。
+  static const int codeCollectionDisabled = -8;
 
   /// 设置独立 MA 调试日志（仅 Android MA 5.5.0+，默认关闭）。
   /// 在 start 前调用可观察初始化日志；此开关独立于 Push 日志。
@@ -18,12 +22,15 @@ class FlutterPluginEngagelabMa {
   /// 启动 EngageLab MA 服务
   /// 原生初始化失败仍返回结果 Map；仅桥接异常补充文案后抛出。
   /// 独立版必须传 MA AppKey，结果增加 euid、maRid、success。
+  /// 建议每次显式传入 [dataCollectionEnabled]；未传时 Android 保留该 AppKey
+  /// 已保存的选择（首次开启），iOS 本轮默认开启。
   static Future<Map<dynamic, dynamic>> start({
     required String appKey,
     String? userId,
     String? anonymousId,
     String? email,
     String? phone,
+    bool? dataCollectionEnabled,
   }) async {
     if (appKey.trim().isEmpty) {
       throw ArgumentError.value(appKey, 'appKey', 'must not be empty');
@@ -36,6 +43,8 @@ class FlutterPluginEngagelabMa {
         'anonymousId': anonymousId,
         'email': email,
         'phone': phone,
+        if (dataCollectionEnabled != null)
+          _dataCollectionEnabledKey: dataCollectionEnabled,
       });
       return result;
     } on PlatformException catch (e) {
@@ -44,6 +53,20 @@ class FlutterPluginEngagelabMa {
         message: '启动 EngageLab MA 服务失败: ${e.message}',
       );
     }
+  }
+
+  /// 初始化成功后设置当前 MA AppKey 的采集开关。
+  /// Future 完成表示原生调用返回，不表示异步切换、服务端同步或恢复已完成。
+  static Future<void> setDataCollectionEnabled(bool enabled) async {
+    await _channel.invokeMethod<void>(
+      'setDataCollectionEnabled',
+      {_dataCollectionEnabledKey: enabled},
+    );
+  }
+
+  /// 查询本地采集状态；iOS 初始化未就绪时返回 null。
+  static Future<bool?> isDataCollectionEnabled() {
+    return _channel.invokeMethod<bool>('isDataCollectionEnabled');
   }
 
   /// 设置用户身份

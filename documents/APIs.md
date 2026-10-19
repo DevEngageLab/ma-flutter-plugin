@@ -5,6 +5,7 @@
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Initialization](#initialization)
+  - [Data Collection Switch](#data-collection-switch)
   - [User Property Management](#user-property-management)
     - [Override Update User Properties](#override-update-user-properties)
     - [Increment User Properties](#increment-user-properties)
@@ -30,11 +31,11 @@ Add the dependency in your `pubspec.yaml` file:
 
 Android and iOS MA 5.5.0 support standalone initialization. Add [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) only when Push capabilities are required.
 
-The plugin resolves official MA 5.5.0 dependencies from Maven Central and CocoaPods. Use the AppKey for your production-environment project.
+The plugin resolves Android MA 5.5.2 from Maven Central and iOS MTMA 5.5.1 from CocoaPods. Use the AppKey for your production-environment project.
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab_ma: ^1.0.4+550550
+  flutter_plugin_engagelab_ma: ^1.0.5+552551
 ```
 
 Navigate to the ios directory:
@@ -57,6 +58,47 @@ final result = await FlutterPluginEngagelabMa.start(
 
 // result contains code, message, euid, maRid, and success
 ```
+
+## Data Collection Switch
+
+Set the user's current consent in every initialization, before automatic collection can start:
+
+```dart
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: 'your_ma_app_key',
+  dataCollectionEnabled: false,
+);
+if (result['success'] == true) {
+  await FlutterPluginEngagelabMa.setDataCollectionEnabled(true);
+  final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
+}
+```
+
+`start(dataCollectionEnabled: ...)` accepts `true`, `false`, or an omitted/null value.
+When omitted, Android keeps the saved choice for that MA AppKey (initially enabled);
+iOS defaults to enabled for that initialization. Pass consent explicitly each time
+to obtain the same behavior on both platforms. The plugin keeps no separate switch cache.
+
+Call the runtime setter after successful initialization. Its `Future<void>` completes
+when the native call returns, without acknowledging server synchronization or the end
+of collection recovery. The query returns the native local state without a network
+request: Android returns a boolean (true before the first start in the main process);
+iOS returns null until initialization is ready. The iOS setter queues the switch on
+the SDK thread, so an immediate query can still return the previous local state.
+
+Disabling stops new behavior events, user properties, UTM and optional device collection.
+The native SDK may send the final batch of data produced before disabling and the
+session end event, then clear collection caches. Initialization, EUID/MA RID, user
+identity, contact information and Push channel binding remain available. Re-enabling
+restores collection and starts a new session; Android property calls during recovery
+can return `-2`.
+
+Property APIs, including object_array APIs, preserve native result maps. When disabled,
+their `code` is `FlutterPluginEngagelabMa.codeCollectionDisabled` (`-8`). Existing
+`eventRecord` and `setUtmProperties` return values only confirm that the bridge call
+completed; they do not confirm collection or delivery. Their native calls are ignored
+while disabled. `setCollectControl` continues to configure individual device fields;
+use the new switch to control overall MA collection.
 
 ## User Property Management
 

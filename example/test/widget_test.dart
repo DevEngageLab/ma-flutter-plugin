@@ -5,6 +5,7 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_plugin_engagelab_ma_example/main.dart';
@@ -19,5 +20,9 @@ void main() {
     expect(find.text('EngageLab MA 示例'), findsOneWidget);
     expect(find.text('检查 AppPush 自动绑定'), findsNothing);
     expect(find.textContaining('如业务方另行集成并初始化 AppPush'), findsOneWidget);
+    final collectionSwitch =
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+    expect(collectionSwitch.value, false);
+    expect(collectionSwitch.onChanged, isNull);
   });
 }

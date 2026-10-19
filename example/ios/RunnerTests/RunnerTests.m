@@ -14,6 +14,28 @@
 
 @implementation RunnerTests
 
+- (void)testCollectionSwitchRejectsNonBooleanValues {
+  FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
+  for (id value in @[NSNull.null, @0, @1, @"false"]) {
+    for (NSString *method in @[@"start", @"setDataCollectionEnabled"]) {
+      FlutterMethodCall *call = [FlutterMethodCall methodCallWithMethodName:method
+                                                                arguments:@{
+        @"appKey": @"0123456789abcdef01234567",
+        @"dataCollectionEnabled": value
+      }];
+      // A null initialization choice means omitted; a runtime setter requires a bool.
+      if ([method isEqualToString:@"start"] && value == NSNull.null) continue;
+      XCTestExpectation *expectation = [self expectationWithDescription:method];
+      [plugin handleMethodCall:call result:^(id result) {
+        XCTAssertTrue([result isKindOfClass:FlutterError.class]);
+        XCTAssertEqualObjects(((FlutterError *)result).code, @"INVALID_ARGUMENT");
+        [expectation fulfill];
+      }];
+      [self waitForExpectationsWithTimeout:1 handler:nil];
+    }
+  }
+}
+
 - (void)testStartWithoutAppKeyReturnsValidationError {
   FlutterPluginEngagelabMaPlugin *plugin = [[FlutterPluginEngagelabMaPlugin alloc] init];
   FlutterMethodCall *call = [FlutterMethodCall methodCallWithMethodName:@"start"

@@ -39,9 +39,9 @@ android {
 
     dependencies {
         testImplementation 'junit:junit:4.13.2'
-        testImplementation 'org.mockito:mockito-core:5.0.0'
+        testImplementation 'org.mockito:mockito-core:5.14.2'
         testImplementation 'org.json:json:20240303'
-        implementation 'com.engagelab.plugin:oth_ma:5.5.0'
+        implementation 'com.engagelab.plugin:oth_ma:5.5.2'
 
     }
 

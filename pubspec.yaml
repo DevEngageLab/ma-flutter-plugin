@@ -1,7 +1,7 @@
 name: flutter_plugin_engagelab_ma
 description: Engagelab Flutter MA plugin.
-version: 1.0.4+550550
-homepage:
+version: 1.0.5+552551
+repository: https://github.com/DevEngageLab/ma-flutter-plugin
 
 environment:
   sdk: ">=2.12.0 <3.0.0"

@@ -5,6 +5,7 @@
   - [目录](#目录)
   - [安装](#安装)
   - [初始化](#初始化)
+  - [数据采集开关](#数据采集开关)
   - [用户属性管理](#用户属性管理)
     - [覆盖更新用户属性](#覆盖更新用户属性)
     - [累加更新用户属性](#累加更新用户属性)
@@ -32,11 +33,11 @@
 
 Android 和 iOS MA 5.5.0 均支持独立初始化；只有需要 Push 能力时才需要集成 [flutter_plugin_engagelab](https://pub.dev/packages/flutter_plugin_engagelab) 插件。
 
-插件使用 Maven Central / CocoaPods 的正式 5.5.0 依赖，连接生产环境；请配置对应项目的 AppKey。
+插件使用 Maven Central 的 Android MA 5.5.2 和 CocoaPods 的 iOS MTMA 5.5.1 正式依赖，连接生产环境；请配置对应项目的 AppKey。
 
 ```yaml
 dependencies:
-  flutter_plugin_engagelab_ma: ^1.0.4+550550
+  flutter_plugin_engagelab_ma: ^1.0.5+552551
 ```
 
 cd 到 ios 目录下：
@@ -61,6 +62,40 @@ final result = await FlutterPluginEngagelabMa.start(
 
 // result 包含 code、message、euid、maRid、success
 ```
+
+## 数据采集开关
+
+每次初始化时按用户当前授权状态显式传入开关，避免初始化后才关闭导致提前采集：
+
+```dart
+final result = await FlutterPluginEngagelabMa.start(
+  appKey: '您的 MA AppKey',
+  dataCollectionEnabled: false,
+);
+if (result['success'] == true) {
+  await FlutterPluginEngagelabMa.setDataCollectionEnabled(true);
+  final bool? enabled = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
+}
+```
+
+`start` 的 `dataCollectionEnabled` 为可选 `bool?`。不传或传 null 时沿用原生规则：Android
+保留该 MA AppKey 最近保存的选择，首次默认开启；iOS 本轮初始化默认开启。为保证两端一致，
+每次都应显式传入当前授权值。插件不另外缓存开关。
+
+初始化成功后调用 `setDataCollectionEnabled(bool)`。返回的 `Future<void>` 完成仅表示
+原生调用返回，不代表服务端状态同步或恢复采集已经完成。`isDataCollectionEnabled()`
+返回原生本地状态，不发网络请求：Android 返回 bool（主进程首次 start 前为 true）；
+iOS 未初始化就绪时返回 null，因此 Dart 返回类型为 `Future<bool?>`。iOS setter
+将切换交给 SDK 线程执行，调用返回后立即查询仍可能读到切换前的本地状态。
+
+关闭后停止新行为事件、用户属性、UTM 与非必要设备信息采集。原生 SDK 可能发送关闭前已产生的
+最后一批数据及会话结束事件，随后清理采集缓存。初始化、EUID/MA RID、用户身份、联系方式和
+Push 通道绑定仍可使用。重新开启后恢复采集并新建会话；Android 恢复期间属性调用可能返回 `-2`。
+
+属性接口（包括 object_array）透传原生结果 Map，关闭时 `code` 为
+`FlutterPluginEngagelabMa.codeCollectionDisabled`（`-8`）。既有 `eventRecord`、
+`setUtmProperties` 的返回值只表示桥接调用完成，不代表采集或送达；关闭期间由原生 SDK 忽略。
+`setCollectControl` 仍用于配置单个设备字段，总体采集请使用本节的新开关。
 
 ## 用户属性管理
 

@@ -35,6 +35,7 @@ class _MyAppState extends State<MyApp> {
   String _euid = 'Unknown';
   String _maRid = 'Unknown';
   bool _isInitialized = false;
+  bool _dataCollectionEnabled = false;
   String _statusMessage = '';
 
   @override
@@ -62,6 +63,8 @@ class _MyAppState extends State<MyApp> {
         appKey: _maAppKey,
         userId: "test_user_123",
         anonymousId: "anon_456",
+        // Demo starts without collection; use the user's current consent in an app.
+        dataCollectionEnabled: _dataCollectionEnabled,
       );
       final msg =
           "MA启动结果: code=${result['code']}, message=${result['message']}, "
@@ -78,6 +81,37 @@ class _MyAppState extends State<MyApp> {
     } on PlatformException catch (e) {
       setState(() {
         _statusMessage = '初始化失败: ${e.message}';
+      });
+    }
+  }
+
+  Future<void> _setDataCollectionEnabled(bool enabled) async {
+    try {
+      await FlutterPluginEngagelabMa.setDataCollectionEnabled(enabled);
+      if (!mounted) return;
+      setState(() {
+        _dataCollectionEnabled = enabled;
+        _statusMessage = '已提交采集选择: $enabled；请查询本地状态，切换由原生 SDK 异步执行';
+      });
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = '设置数据采集失败: ${e.message}';
+      });
+    }
+  }
+
+  Future<void> _queryDataCollectionEnabled() async {
+    try {
+      final current = await FlutterPluginEngagelabMa.isDataCollectionEnabled();
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = '本地采集状态: ${current ?? "未就绪"}（不表示服务端同步完成）';
+      });
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = '查询数据采集失败: ${e.message}';
       });
     }
   }
@@ -447,6 +481,15 @@ class _MyAppState extends State<MyApp> {
               ),
               const SizedBox(height: 16),
               // API 按钮
+              SwitchListTile(
+                title: const Text('数据采集选择（Demo 默认关闭）'),
+                value: _dataCollectionEnabled,
+                onChanged: _isInitialized ? _setDataCollectionEnabled : null,
+              ),
+              ElevatedButton(
+                onPressed: _isInitialized ? _queryDataCollectionEnabled : null,
+                child: const Text('查询本地数据采集状态'),
+              ),
               ElevatedButton(
                 onPressed: _isInitialized ? _setUserIdentity : null,
                 child: const Text('设置用户身份'),

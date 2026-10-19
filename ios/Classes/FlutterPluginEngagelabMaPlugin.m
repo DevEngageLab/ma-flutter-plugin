@@ -3,6 +3,9 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <math.h>
 
+static NSString * const MTMADataCollectionEnabledKey = @"dataCollectionEnabled";
+static NSString * const MTMAInvalidCollectionArgument = @"dataCollectionEnabled must be a boolean";
+
 static BOOL MTMAIsNonEmptyString(id value) {
     if (![value isKindOfClass:NSString.class]) {
         return NO;
@@ -82,6 +85,17 @@ static BOOL MTMAHasNonNullField(NSDictionary *object) {
 
         MTMAConfig *config = [[MTMAConfig alloc] init];
         config.appKey = appKey;
+        id dataCollectionEnabled = args[MTMADataCollectionEnabledKey];
+        if (dataCollectionEnabled != nil && dataCollectionEnabled != NSNull.null) {
+            if (![dataCollectionEnabled isKindOfClass:NSNumber.class] ||
+                !MTMAIsBooleanNumber(dataCollectionEnabled)) {
+                result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
+                                          message:MTMAInvalidCollectionArgument
+                                          details:nil]);
+                return;
+            }
+            config.dataCollectionEnabled = dataCollectionEnabled;
+        }
         MTMAUserID *user = [[MTMAUserID alloc] init];
         NSString *anonymousId = [args[@"anonymousId"] isKindOfClass:NSString.class] ? args[@"anonymousId"] : nil;
         NSString *userId = [args[@"userId"] isKindOfClass:NSString.class] ? args[@"userId"] : nil;
@@ -122,6 +136,19 @@ static BOOL MTMAHasNonNullField(NSDictionary *object) {
             });
         };
         [MTMAService start:config];
+    } else if ([@"setDataCollectionEnabled" isEqualToString:call.method]) {
+        NSDictionary *args = [call.arguments isKindOfClass:NSDictionary.class] ? call.arguments : @{};
+        id enabled = args[MTMADataCollectionEnabledKey];
+        if (![enabled isKindOfClass:NSNumber.class] || !MTMAIsBooleanNumber(enabled)) {
+            result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
+                                      message:MTMAInvalidCollectionArgument
+                                      details:nil]);
+            return;
+        }
+        [MTMAService setDataCollectionEnabled:[enabled boolValue]];
+        result(nil);
+    } else if ([@"isDataCollectionEnabled" isEqualToString:call.method]) {
+        result([MTMAService isDataCollectionEnabled]);
     } else if ([@"setUserContact" isEqualToString:call.method]) {
         NSDictionary *args = call.arguments;
         MTMAUserContact *contact = [[MTMAUserContact alloc] init];
