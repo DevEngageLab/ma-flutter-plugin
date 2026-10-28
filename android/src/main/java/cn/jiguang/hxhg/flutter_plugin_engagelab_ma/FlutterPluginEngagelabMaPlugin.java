@@ -230,6 +230,12 @@ public class FlutterPluginEngagelabMaPlugin implements FlutterPlugin, MethodCall
     } else if (call.method.equals("getMaRid")) {
       String maRid = MTMAApi.getInstance(flutterPluginBinding.getApplicationContext()).getMaRid();
       result.success(maRid == null ? "" : maRid);
+    } else if (call.method.equals("getSdkVersion")) {
+      // 编译期常量，不需要初始化 SDK，也不需要 Context。
+      Map<String, Object> version = new HashMap<>();
+      version.put("versionCode", MTMAApi.SDK_VERSION_CODE);
+      version.put("versionName", MTMAApi.SDK_VERSION_NAME);
+      result.success(version);
     } else if (call.method.equals("setChannelValue")) {
       Number channelId = call.argument("channelId");
       List<String> values = call.argument("values");

@@ -135,6 +135,20 @@ class FlutterPluginEngagelabMa {
     }
   }
 
+  /// 获取 MA SDK 版本（仅 Android MA 5.5.0+）。
+  ///
+  /// 返回 Map，包含 `versionCode`（数字版本号）与 `versionName`（字符串版本号），
+  /// 两者都是原生编译期常量，不需要先调用 [start]。
+  /// iOS 暂未提供对应接口，和其他平台一样抛出 UnsupportedError。
+  static Future<Map<dynamic, dynamic>> getSdkVersion() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError('MA getSdkVersion is only supported on Android');
+    }
+    final Map<dynamic, dynamic>? version =
+        await _channel.invokeMethod<Map<dynamic, dynamic>>('getSdkVersion');
+    return version ?? <dynamic, dynamic>{};
+  }
+
   /// 设置第三方 Push 渠道的 RID 或 Token（Android/iOS 5.5.0+）
   /// 两端统一去除每个值的首尾空白，不修改调用方的列表。
   static Future<Map<dynamic, dynamic>> setChannelValue({

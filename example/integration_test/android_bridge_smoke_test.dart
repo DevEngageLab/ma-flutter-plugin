@@ -28,6 +28,12 @@ void main() {
               .having((error) => error.code, 'code', 'INVALID_ARGUMENT')));
       expect(await FlutterPluginEngagelabMa.getEuid(), isA<String>());
       expect(await FlutterPluginEngagelabMa.getMaRid(), isA<String>());
+      // 版本号来自已发布制品的编译期常量，这里顺带验证依赖确实带上了新 API。
+      final version = await FlutterPluginEngagelabMa.getSdkVersion();
+      debugPrint('MA SDK version: $version');
+      expect(version['versionCode'], greaterThan(0));
+      expect(version['versionName'], matches(RegExp(r'^\d+\.\d+\.\d+')));
+      expect(version['versionName'], startsWith('5.5.'));
     } finally {
       await FlutterPluginEngagelabMa.configDebugMode(false);
     }

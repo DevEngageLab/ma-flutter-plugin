@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_plugin_engagelab_ma/flutter_plugin_engagelab_ma.dart';
@@ -34,6 +35,7 @@ class _MyAppState extends State<MyApp> {
 
   String _euid = 'Unknown';
   String _maRid = 'Unknown';
+  String _sdkVersion = 'Unknown';
   bool _isInitialized = false;
   bool _dataCollectionEnabled = false;
   String _statusMessage = '';
@@ -183,6 +185,21 @@ class _MyAppState extends State<MyApp> {
     } on PlatformException catch (e) {
       setState(() {
         _statusMessage = '获取 MA RID 失败: ${e.message}';
+      });
+    }
+  }
+
+  // 获取 MA SDK 版本（仅 Android 5.5.0+，未初始化也可读）
+  Future<void> _getSdkVersion() async {
+    try {
+      final version = await FlutterPluginEngagelabMa.getSdkVersion();
+      setState(() {
+        _sdkVersion = '${version['versionName']} (${version['versionCode']})';
+        _statusMessage = '获取 MA SDK 版本成功';
+      });
+    } on PlatformException catch (e) {
+      setState(() {
+        _statusMessage = '获取 MA SDK 版本失败: ${e.message}';
       });
     }
   }
@@ -463,6 +480,8 @@ class _MyAppState extends State<MyApp> {
                       const SizedBox(height: 8),
                       Text('MA RID: $_maRid'),
                       const SizedBox(height: 8),
+                      Text('MA SDK 版本: $_sdkVersion'),
+                      const SizedBox(height: 8),
                       const Text('如业务方另行集成并初始化 AppPush，MA 会在双方身份就绪后自动关联'),
                       const SizedBox(height: 8),
                       Text('第三方 Push Channel ID: $_channelId'),
@@ -508,6 +527,14 @@ class _MyAppState extends State<MyApp> {
               ElevatedButton(
                 onPressed: _isInitialized ? _getMaRid : null,
                 child: const Text('获取 MA RID'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                // 版本号是编译期常量，不需要初始化；仅 Android 提供该接口。
+                onPressed: defaultTargetPlatform == TargetPlatform.android
+                    ? _getSdkVersion
+                    : null,
+                child: const Text('获取 MA SDK 版本 (仅 Android)'),
               ),
               const SizedBox(height: 8),
               ElevatedButton(

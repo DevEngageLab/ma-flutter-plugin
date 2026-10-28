@@ -154,6 +154,30 @@ void main() {
     expect(lastCall, isNull);
   });
 
+  test('Android SDK version forwards the native constants', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    response = <String, dynamic>{'versionCode': 552, 'versionName': '5.5.2'};
+
+    final version = await FlutterPluginEngagelabMa.getSdkVersion();
+
+    expect(lastCall?.method, 'getSdkVersion');
+    expect(lastCall?.arguments, isNull);
+    expect(version, response);
+  });
+
+  test('SDK version reports unsupported off Android without invoking native code',
+      () async {
+    for (final platform in <TargetPlatform>[
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+    ]) {
+      debugDefaultTargetPlatformOverride = platform;
+      await expectLater(
+          FlutterPluginEngagelabMa.getSdkVersion(), throwsUnsupportedError);
+      expect(lastCall, isNull);
+    }
+  });
+
   test('start passes the MA AppKey and returns initialization fields',
       () async {
     response = <String, dynamic>{

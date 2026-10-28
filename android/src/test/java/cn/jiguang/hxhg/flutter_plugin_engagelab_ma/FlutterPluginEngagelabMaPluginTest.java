@@ -101,6 +101,24 @@ public class FlutterPluginEngagelabMaPluginTest {
     }
   }
 
+  /**
+   * 版本号是编译期常量，这里验证的是通道接线：方法被路由、两个 key 都在、且不是占位值。
+   * 常量字面量本身由原生 SDK 决定，本测试无法独立复算。
+   */
+  @Test
+  public void getSdkVersion_reportsNativeConstantsWithoutInitialization() {
+    FlutterPluginEngagelabMaPlugin plugin = new FlutterPluginEngagelabMaPlugin();
+    MethodChannel.Result result = mock(MethodChannel.Result.class);
+    plugin.onMethodCall(new MethodCall("getSdkVersion", null), result);
+
+    Map<String, Object> expected = new HashMap<>();
+    expected.put("versionCode", MTMAApi.SDK_VERSION_CODE);
+    expected.put("versionName", MTMAApi.SDK_VERSION_NAME);
+    verify(result).success(expected);
+    assertTrue(MTMAApi.SDK_VERSION_CODE > 0);
+    assertTrue(MTMAApi.SDK_VERSION_NAME != null && !MTMAApi.SDK_VERSION_NAME.isEmpty());
+  }
+
   @Test
   public void start_rejectsNonBooleanCollectionChoiceBeforeCallingSdk() {
     FlutterPluginEngagelabMaPlugin plugin = new FlutterPluginEngagelabMaPlugin();

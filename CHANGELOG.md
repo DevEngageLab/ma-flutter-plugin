@@ -1,3 +1,8 @@
+## 1.1.0+552551
+
+* add `getSdkVersion()` returning the native `versionCode`/`versionName` of the resolved Android MA SDK; the values are compile-time constants, so the call works before `start`
+* `getSdkVersion()` is Android-only for now and throws `UnsupportedError` on iOS and other platforms, matching `configDebugMode`
+
 ## 1.0.5+552551
 
 * upgrade published native dependencies to Android MA 5.5.2 and iOS MTMA 5.5.1

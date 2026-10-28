@@ -18,6 +18,7 @@
     - [设置用户联系方式](#设置用户联系方式)
     - [获取 EUID](#获取-euid)
     - [获取 MA RID](#获取-ma-rid)
+    - [获取 MA SDK 版本](#获取-ma-sdk-版本)
     - [设置第三方 Push 通道](#设置第三方-push-通道)
     - [设置上报间隔](#设置上报间隔)
     - [设置事件缓存上限](#设置事件缓存上限)
@@ -283,6 +284,17 @@ SDK 尚未初始化成功或身份尚未生成时返回空字符串。MA RID 与
 final maRid = await FlutterPluginEngagelabMa.getMaRid();
 ```
 
+### 获取 MA SDK 版本
+
+Android MA 5.5.0 及以上版本支持，直接读取原生 `MTMAApi.SDK_VERSION_CODE` 与 `MTMAApi.SDK_VERSION_NAME`。两者是所依赖原生制品的编译期常量，因此可以在 `start` 之前调用，返回的也一定是应用实际编译进去的版本。
+
+```dart
+final version = await FlutterPluginEngagelabMa.getSdkVersion();
+// version: {'versionCode': 552, 'versionName': '5.5.2'}
+```
+
+`versionCode` 为数字版本号，`versionName` 为字符串版本号。目前仅 Android 提供该接口，iOS 和其他平台抛出 `UnsupportedError`，与 `configDebugMode` 一致。
+
 ### 设置第三方 Push 通道
 
 Android 和 iOS 5.5.0 及以上版本支持，用于设置第三方 Push 的 RID 或 Token。应用同时集成 EngageLab AppPush 和 MA 时，AppPush 注册成功取得 RID 后，MA SDK 会自动将 AppPush 的 AppKey/RID 与当前 MA 身份关联，无需调用此接口；其他第三方 Push 仍需主动设置。
@@ -389,7 +401,7 @@ final result = await FlutterPluginEngagelabMa.eventRecord(
 1. 所有异步方法都返回 `Future`，需要使用 `async/await` 或 `.then()` 处理结果
 2. 原生业务回调的 `code`、`message` 原样返回；非零 code 不会自动抛异常，message 不保证是 JSON，两端的错误码含义和文案也不保证相同。
 3. 新增对象数组更新、追加、删除接口沿用旧属性接口：遇到 `PlatformException` 返回 `{'code': -1, 'message': '错误说明'}`。新增 `setChannelValue` 沿用联系方式接口：桥接异常保留异常 code，补充说明后抛出。`start`、身份接口维持原有异常处理。
-4. 新接口的 Dart 参数校验失败抛出 `ArgumentError`；仅 Android 支持的 `configDebugMode` 在 iOS 抛出 `UnsupportedError`。原生初始化结果统一为 `code/message/euid/maRid/success`，不会额外映射业务错误码或解析 message。仅凭调用正常返回不能认定操作成功，应检查业务 code。
+4. 新接口的 Dart 参数校验失败抛出 `ArgumentError`；仅 Android 支持的 `configDebugMode`、`getSdkVersion` 在 iOS 抛出 `UnsupportedError`。原生初始化结果统一为 `code/message/euid/maRid/success`，不会额外映射业务错误码或解析 message。仅凭调用正常返回不能认定操作成功，应检查业务 code。
 3. 用户属性相关的操作都支持批量处理，可以一次设置多个属性
 4. 在进行用户属性操作之前，确保已经成功初始化 SDK
 

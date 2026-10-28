@@ -18,6 +18,7 @@
     - [Set User Contact Information](#set-user-contact-information)
     - [Get EUID](#get-euid)
     - [Get MA RID](#get-ma-rid)
+    - [Get MA SDK Version](#get-ma-sdk-version)
     - [Set Third-Party Push Channel](#set-third-party-push-channel)
     - [Set Report Interval](#set-report-interval)
     - [Set Event Cache Limit](#set-event-cache-limit)
@@ -286,6 +287,22 @@ Returns an empty string before initialization succeeds or before the identity is
 final maRid = await FlutterPluginEngagelabMa.getMaRid();
 ```
 
+### Get MA SDK Version
+
+Supported on Android MA 5.5.0 and later. It bridges `MTMAApi.SDK_VERSION_CODE`
+and `MTMAApi.SDK_VERSION_NAME`, which are compile-time constants of the
+resolved native dependency, so it can be called before `start` and always
+reports the SDK the app is actually built against.
+
+```dart
+final version = await FlutterPluginEngagelabMa.getSdkVersion();
+// version: {'versionCode': 552, 'versionName': '5.5.2'}
+```
+
+`versionCode` is the numeric version and `versionName` the string version. This
+API is Android-only for now; iOS and other platforms throw `UnsupportedError`,
+matching `configDebugMode`.
+
 ### Set Third-Party Push Channel
 
 Supported on Android and iOS 5.5.0 and later. Use this API to set a third-party Push RID or token. When EngageLab AppPush and MA are both integrated, MA automatically associates the AppPush AppKey/RID with the current MA identity after AppPush registration succeeds; do not call this API for AppPush. Other third-party Push providers still require an explicit call.
@@ -397,7 +414,8 @@ The new object-array update, append and remove methods follow existing property
 APIs: a `PlatformException` becomes `{'code': -1, 'message': 'error description'}`.
 `setChannelValue` follows the contact API: bridge exceptions keep their code and
 are rethrown with an explanatory message. Dart argument validation throws
-`ArgumentError`.
+`ArgumentError`. Android-only APIs (`configDebugMode`, `getSdkVersion`) throw
+`UnsupportedError` on iOS and other platforms.
 
 Initialization keeps the original exception behavior: native failures return a
 Map, while bridge exceptions are rethrown with an explanatory message. Standalone
